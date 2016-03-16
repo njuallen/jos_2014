@@ -28,6 +28,12 @@ static const char * const error_string[MAXERROR] =
 	[E_FAULT]	= "segmentation fault",
 };
 
+/* 这递归，看得我蛋疼
+ * 总的来说，它保证了先将合适数量的padding打印在左侧
+ * 在讲数字打印在padding后面
+ * 所以严格说来，它这边只支持改变padding的字符
+ * 但不支持padding的方向
+ */
 /*
  * Print a number (base <= 16) in reverse order,
  * using specified putch function and associated pointer putdat.
@@ -76,6 +82,30 @@ getint(va_list *ap, int lflag)
 }
 
 
+/* printf format specification from K & R
+ * 负号： 用于指定被转换的参数按照左对齐的形式输出
+ * 数：   指定最小字段宽度。转换后的参数将打印不小于最小字段宽度的字段。
+ * 如果有必要，字段左边多余的字符位置用空格填充以保证最小字宽。
+ * 还有一个东西是'0'flag，在默认右对齐的情况下，左侧可以使用0填充
+ * 小数点：分隔字段宽度与精度
+ * 数： 指定精度
+ * 字母： 指定转换
+ */
+/* 标准的printf fmt字符串解释应该是这样的
+ * 但是这边的这个简化版本的printfmt不支持
+ * 改变padding的方向，只支持改变padding的字符
+ * 下面是具体的例子来说明这个问题：
+ * 使用标准C库
+ * printf("%-8xhello!\n", 0x111);
+ * 输出为111     hello!
+ * 而使用cprintf
+ * cprintf("%-8xhello!\n", 0x111);
+ * 输出为-----111hello!
+ * 另外就是他自己定义了一个e用于error
+ * 而在C中，e是用于输出浮点数的
+ */
+
+
 // Main function to format and print a string.
 void printfmt(void (*putch)(int, void*), void *putdat, const char *fmt, ...);
 
@@ -89,6 +119,7 @@ vprintfmt(void (*putch)(int, void*), void *putdat, const char *fmt, va_list ap)
 	char padc;
 
 	while (1) {
+		// 非%字符直接输出
 		while ((ch = *(unsigned char *) fmt++) != '%') {
 			if (ch == '\0')
 				return;
@@ -104,6 +135,8 @@ vprintfmt(void (*putch)(int, void*), void *putdat, const char *fmt, va_list ap)
 	reswitch:
 		switch (ch = *(unsigned char *) fmt++) {
 
+		// 先查padding指示符，负号与0
+		// 什么鬼，负号不应该是pad on the left 吗？
 		// flag to pad on the right
 		case '-':
 			padc = '-';
@@ -124,6 +157,8 @@ vprintfmt(void (*putch)(int, void*), void *putdat, const char *fmt, va_list ap)
 		case '7':
 		case '8':
 		case '9':
+			// width以及precision都是在这里读入
+			// 并到process_precision处理的
 			for (precision = 0; ; ++fmt) {
 				precision = precision * 10 + ch - '0';
 				ch = *fmt;

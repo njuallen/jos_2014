@@ -57,6 +57,10 @@ stab_binsearch(const struct Stab *stabs, int *region_left, int *region_right,
 		int true_m = (l + r) / 2, m = true_m;
 
 		// search for earliest stab with right type
+		// 注释中称其为earliest似乎容易引起误解，
+		// 我们要做的就是在左边一半中从右往左找到第一个类型正确的
+		// 如果这一个地址比addr大，那我们就只要在左边一半中搜索
+		// 如果比addr小，则我们只要在右边一半中搜索
 		while (m >= l && stabs[m].n_type != type)
 			m--;
 		if (m < l) {	// no match in [l, m]
