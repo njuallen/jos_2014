@@ -173,7 +173,6 @@ mem_init(void)
 	page_init();
 
 	check_page_free_list(1);
-	assert(0);
 	check_page_alloc();
 	check_page();
 
@@ -306,6 +305,15 @@ page_init(void)
 struct PageInfo *
 page_alloc(int alloc_flags)
 {
+	if (page_free_list != NULL) {
+		struct PageInfo *result = page_free_list;
+		page_free_list = page_free_list->pp_link;
+		result->pp_link = NULL;
+		result->pp_ref = 0;
+		if(alloc_flags & ALLOC_ZERO)
+			memset(page2kva(result), 0, PGSIZE);
+		return result;
+	}
 	// Fill this function in
 	return 0;
 }
@@ -320,6 +328,10 @@ page_free(struct PageInfo *pp)
 	// Fill this function in
 	// Hint: You may want to panic if pp->pp_ref is nonzero or
 	// pp->pp_link is not NULL.
+	if (pp->pp_ref != 0 || pp->pp_link != NULL) 
+		panic("page_free error!\n");
+	pp->pp_link = page_free_list;
+	page_free_list = pp;
 }
 
 //
@@ -564,6 +576,7 @@ check_page_alloc(void)
 	assert(page2pa(pp1) < npages*PGSIZE);
 	assert(page2pa(pp2) < npages*PGSIZE);
 
+	// 真是尼玛机智啊！
 	// temporarily steal the rest of the free pages
 	fl = page_free_list;
 	page_free_list = 0;
