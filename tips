@@ -1,0 +1,14 @@
+# Tips for the lab
+##lab1
+
+##lab2
+
+###boot_alloc
+In boot_alloc, we allocate a small amount of memory from the remapped physical memory(see memlayout.h). What's more, note that, we only remapped 4MB of physical memory. If you try to access any memory address above (0xf0400000 -1), you will encounter a triple fault, which causes qemu to reboot.
+When we are using "make qemu-nox", it outputs no special message when rebooting.
+
+###page_init
+Read the definition of a macro or function provided by TA, make sure you understand what they are doing exactly.
+In writing page_init, I used the PTX macro instead of the PGNUM macro. This wastes me much time.
+
+

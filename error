@@ -1,56 +1,18 @@
-make clean
-make[1]: Entering directory '/home/allen/Desktop/os/mit_os_6.828/lab'
-rm -rf obj .gdbinit jos.in qemu.log
-make[1]: Leaving directory '/home/allen/Desktop/os/mit_os_6.828/lab'
-./grade-lab1 
-make[1]: Entering directory '/home/allen/Desktop/os/mit_os_6.828/lab'
-+ as kern/entry.S
-+ cc kern/entrypgdir.c
-+ cc kern/init.c
-+ cc kern/console.c
-+ cc kern/monitor.c
-+ cc kern/printf.c
-+ cc kern/kdebug.c
-+ cc lib/printfmt.c
-+ cc lib/readline.c
-+ cc lib/string.c
++ cc kern/pmap.c
 + ld obj/kern/kernel
-+ as boot/boot.S
-+ cc -Os boot/main.c
-+ ld boot/boot
 + mk obj/kern/kernel.img
-make[1]: Leaving directory '/home/allen/Desktop/os/mit_os_6.828/lab'
-running JOS: (1.4s) 
-  printf: OK 
-  backtrace count: FAIL 
-    got:
-      2
-    expected:
-      8
-  backtrace arguments: FAIL 
-    got:
-      00000000
-      00000004
-    expected:
-      00000000
-      00000000
-      00000001
-      00000002
-      00000003
-      00000004
-      00000005
-  backtrace symbols: FAIL 
-    got:
-      
-    expected:
-      test_backtrace
-      test_backtrace
-      test_backtrace
-      test_backtrace
-      test_backtrace
-      test_backtrace
-      i386_init
-  backtrace lines: FAIL 
-    No line numbers
-Score: 20/50
-GNUmakefile:198: recipe for target 'grade' failed
+***
+*** Use Ctrl-a x to exit qemu
+***
+qemu-system-i386 -nographic -hda obj/kern/kernel.img -serial mon:stdio -gdb tcp::26000 -D qemu.log 
+6828 decimal is 15254 octal!
+Physical memory: 66556K available, base = 640K, extended = 65532K
+npages = 16639
+6828 decimal is 15254 octal!
+Physical memory: 66556K available, base = 640K, extended = 65532K
+npages = 16639
+6828 decimal is 15254 octal!
+Physical memory: 66556K available, base = 640K, extended = 65532K
+npages = 16639
+QEMU: Terminated
+
