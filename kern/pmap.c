@@ -127,6 +127,7 @@ boot_alloc(uint32_t n)
 //
 // From UTOP to ULIM, the user is allowed to read but not write.
 // Above ULIM the user cannot read or write.
+
 void
 mem_init(void)
 {
@@ -187,6 +188,11 @@ mem_init(void)
 	//      (ie. perm = PTE_U | PTE_P)
 	//    - pages itself -- kernel RW, user NONE
 	// Your code goes here:
+	// well, since our page table is fairly small
+	// mapping entire 4MB of memory may expose some more kernel memory 
+	// than we needed.
+	// But I do not know how to deal with it yet.
+	boot_map_region(kern_pgdir, UPAGES, 4096 * 1024, PADDR(pages), PTE_U | PTE_P);
 
 	//////////////////////////////////////////////////////////////////////
 	// Use the physical memory that 'bootstack' refers to as the kernel
@@ -199,6 +205,19 @@ mem_init(void)
 	//       overwrite memory.  Known as a "guard page".
 	//     Permissions: kernel RW, user NONE
 	// Your code goes here:
+	// 
+	// map [KSTACKTOP-KSTKSIZE, KSTACKTOP) -- backed by physical memory
+	boot_map_region(kern_pgdir, KSTACKTOP - KSTKSIZE, KSTKSIZE, PADDR(bootstack), PTE_W);
+	
+	// [KSTACKTOP-PTSIZE, KSTACKTOP-KSTKSIZE) -- not backed; so if
+	uintptr_t va;
+	for(va = KSTACKTOP - PTSIZE; 
+			va < KSTACKTOP - KSTKSIZE; va += PGSIZE) {
+		pte_t *pte = pgdir_walk(kern_pgdir, (const void *)va, true);
+		if (pte == NULL)
+			panic("initialize kernel stack failed!\n");
+		*pte = 0x0;
+	}
 
 	//////////////////////////////////////////////////////////////////////
 	// Map all of physical memory at KERNBASE.
@@ -208,6 +227,8 @@ mem_init(void)
 	// we just set up the mapping anyway.
 	// Permissions: kernel RW, user NONE
 	// Your code goes here:
+	size_t remap_size = (((uint64_t)1) << 32) - KERNBASE;
+	boot_map_region(kern_pgdir, KERNBASE, remap_size, 0, PTE_W);
 
 	// Check that the initial page directory has been set up correctly.
 	check_kern_pgdir();
@@ -219,8 +240,16 @@ mem_init(void)
 	//
 	// If the machine reboots at this point, you've probably set up your
 	// kern_pgdir wrong.
-	lcr3(PADDR(kern_pgdir));
+	
 
+	lcr3(PADDR(kern_pgdir));
+	/*
+	unsigned int *ptr = (unsigned int *)0xf0114fa0;
+	int a = *ptr;
+	ptr = (unsigned int *)mem_init;
+	*ptr = 0;
+	while(1);
+	*/
 	check_page_free_list(0);
 
 	// entry.S set the really important flags in cr0 (including enabling
@@ -379,7 +408,12 @@ pgdir_walk(pde_t *pgdir, const void *va, int create)
 			if(ptable == NULL)
 				return NULL;
 			ptable->pp_ref++;
-			*pde = page2pa(ptable) | PTE_P;
+			// Setting up permission bits in both the page directory 
+			// and the page table is complex.
+			// So we will leave permissions in the page directory more
+			// permissive than strictly necessary.
+			// see Hint 2
+			*pde = page2pa(ptable) | PTE_P | PTE_U | PTE_W;
 			ret = (pte_t *)page2kva(ptable) + PTX(va);
 			return ret;
 		}
@@ -396,6 +430,8 @@ pgdir_walk(pde_t *pgdir, const void *va, int create)
 // in the page table rooted at pgdir.  Size is a multiple of PGSIZE, and
 // va and pa are both page-aligned.
 // Use permission bits perm|PTE_P for the entries.
+//
+// allen: entries? what kind of entries ?
 //
 // This function is only intended to set up the ``static'' mappings
 // above UTOP. As such, it should *not* change the pp_ref field on the
@@ -440,6 +476,9 @@ boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm
 // Hint: The TA solution is implemented using pgdir_walk, page_remove,
 // and page2pa.
 //
+// I think when we insert a new physical page into the page table
+// we may need to change the permissions of both pte and pde
+// see i386-manual 6.4 and 6.5
 int
 page_insert(pde_t *pgdir, struct PageInfo *pp, void *va, int perm)
 {
@@ -811,8 +850,7 @@ check_page(void)
 	assert(pp2->pp_ref == 1);
 	assert(*pgdir_walk(kern_pgdir, (void*) PGSIZE, 0) & PTE_U);
 
-//	?????????????
-//	assert(kern_pgdir[0] & PTE_U);
+	assert(kern_pgdir[0] & PTE_U);
 
 	// should be able to remap with fewer permissions
 	assert(page_insert(kern_pgdir, pp2, (void*) PGSIZE, PTE_W) == 0);

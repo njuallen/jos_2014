@@ -25,6 +25,7 @@ static struct Command commands[] = {
 	{ "help", "Display this list of commands", mon_help },
 	{ "kerninfo", "Display information about the kernel", mon_kerninfo },
 	{ "backtrace", "Backtracing the stack", mon_backtrace },
+	{ "showmapping", "Show the memory mapping of a virtual memory address", mon_showmapping },
 };
 #define NCOMMANDS (sizeof(commands)/sizeof(commands[0]))
 
@@ -56,10 +57,63 @@ mon_kerninfo(int argc, char **argv, struct Trapframe *tf)
 	return 0;
 }
 
-/*
+static int get_hex(const char *str, uint32_t *dst) {
+	while(*str && *str != 'x')
+		str++;
+	str++;
+	if(*str == 0)
+		return -1;
+	*dst = 0;
+	while(*str) {
+		if (*str >= '0' && *str <= '9')
+			*dst = *dst * 16 + *str - '0';
+		else if(*str >= 'a' && *str <= 'f')
+			*dst = *dst * 16 + *str - 'a' + 10;
+		else
+			return -1;
+		*str++;
+	}
+	return 0;
+}
+
 int
-debuginfo_eip(uintptr_t addr, struct Eipdebuginfo *info);
-*/
+mon_showmapping(int argc, char **argv, struct Trapframe *tf)
+{
+	if (argc < 2)
+		cprintf("showmapping: expect virtual memory addresses in hexadicimal representation\n");
+	else {
+		int i;
+		cprintf("%3s%-10s%-10s%-10s%-10s\n", " ", "va", "pde", "pte", "perm");
+		for(i = 1; i < argc; i++) {
+			uintptr_t va;
+			int ret = get_hex(argv[i], &va);
+			if(ret < 0) {
+				cprintf("%s is not a legal hex number\n", argv[i]);
+				return 0;
+			}
+			extern pde_t *kern_pgdir;
+			pde_t pde = kern_pgdir[PDX(va)]; 
+			if (pde & PTE_P) {
+				pde &= 0xfffff000;
+				pde_t pde_tmp = pde + KERNBASE;
+				pte_t pte = *((pte_t *)pde_tmp + PTX(va));
+				if(pte & PTE_P) {
+					uint32_t perm = pte & 0xfff;
+					pte &= 0xfffff000;
+					cprintf("%3s%8x %8x %8x %8x\n", " ", va, pde, pte, perm);
+				}
+				else {
+					cprintf("page does not exist");
+				}
+			}
+			else {
+				cprintf("%3s%-10x page table does not exist\n", " ", va);
+			}
+		}
+	}
+	return 0;
+}
+
 int
 mon_backtrace(int argc, char **argv, struct Trapframe *tf)
 {
