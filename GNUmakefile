@@ -153,13 +153,15 @@ gdb:
 pre-qemu: .gdbinit
 
 qemu: $(IMAGES) pre-qemu
-	$(QEMU) $(QEMUOPTS)
+	objdump -d obj/kern/kernel > obj/kern/kernel.txt
+	$(QEMU) -d int $(QEMUOPTS) 
 
 qemu-nox: $(IMAGES) pre-qemu
 	@echo "***"
 	@echo "*** Use Ctrl-a x to exit qemu"
 	@echo "***"
-	$(QEMU) -nographic $(QEMUOPTS)
+	objdump -d obj/kern/kernel > obj/kern/kernel.txt
+	$(QEMU) -nographic -d int $(QEMUOPTS)
 
 qemu-gdb: $(IMAGES) pre-qemu
 	@echo "***"

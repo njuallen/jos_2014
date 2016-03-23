@@ -1,0 +1,22 @@
+# Tips for the lab
+##lab1
+
+##lab2
+
+###boot_alloc
+In boot_alloc, we allocate a small amount of memory from the remapped physical memory(see memlayout.h). What's more, note that, we only remapped 4MB of physical memory. If you try to access any memory address above (0xf0400000 -1), you will encounter a triple fault, which causes qemu to reboot.
+When we are using "make qemu-nox", it outputs no special message when rebooting.
+
+###page_init
+Read the definition of a macro or function provided by TA, make sure you understand what they are doing exactly.
+In writing page_init, I used the PTX macro instead of the PGNUM macro. This wastes me much time.
+
+###pgdir_walk
+Setting up permission bits in both the page directory and the page table is complex. So we'd better leave permissions in the page directory more permissive than strictly necessary(See Hint 2). So, we could set up the permission bits for pde just like this:
+	*pde = page2pa(ptable) | PTE_P | PTE_U | PTE_W;
+This line in check_page actually checks this:
+	assert(kern_pgdir[0] & PTE_U);
+You can read i386-manual 6.4 for more information on directory and page protection.
+To meet certain protection requirements, we can set up pte and pde like this:
+
+
