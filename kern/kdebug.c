@@ -137,7 +137,6 @@ debuginfo_eip(uintptr_t addr, struct Eipdebuginfo *info)
 		stabstr = __STABSTR_BEGIN__;
 		stabstr_end = __STABSTR_END__;
 	} else {
-//<<<<<<< HEAD
 		// The user-application linker script, user/user.ld,
 		// puts information about the application's stabs (equivalent
 		// to __STAB_BEGIN__, __STAB_END__, __STABSTR_BEGIN__, and
@@ -156,12 +155,6 @@ debuginfo_eip(uintptr_t addr, struct Eipdebuginfo *info)
 
 		// Make sure the STABS and string table memory is valid.
 		// LAB 3: Your code here.
-//=======
-	/*
-		// Can't search for user-level addresses yet!
-		panic("User address");
-		*/
-//>>>>>>> lab2
 	}
 
 	// String table validity checks

@@ -169,6 +169,8 @@ mem_init(void)
 	//////////////////////////////////////////////////////////////////////
 	// Make 'envs' point to an array of size 'NENV' of 'struct Env'.
 	// LAB 3: Your code here.
+	envs = (struct Env *)boot_alloc(NENV * sizeof(struct Env));
+	memset(envs, 0, NENV * sizeof(struct Env));
 
 	//////////////////////////////////////////////////////////////////////
 	// Now that we've allocated the initial kernel data structures, we set
@@ -197,7 +199,7 @@ mem_init(void)
 	// mapping entire 4MB of memory may expose some more kernel memory 
 	// than we needed.
 	// But I do not know how to deal with it yet.
-	boot_map_region(kern_pgdir, UPAGES, 4096 * 1024, PADDR(pages), PTE_U | PTE_P);
+	boot_map_region(kern_pgdir, UPAGES, PTSIZE, PADDR(pages), PTE_U | PTE_P);
 
 	//////////////////////////////////////////////////////////////////////
 	// Map the 'envs' array read-only by the user at linear address UENVS
@@ -206,6 +208,7 @@ mem_init(void)
 	//    - the new image at UENVS  -- kernel R, user R
 	//    - envs itself -- kernel RW, user NONE
 	// LAB 3: Your code here.
+	boot_map_region(kern_pgdir, UENVS, PTSIZE, PADDR(envs), PTE_U | PTE_P);
 
 	//////////////////////////////////////////////////////////////////////
 	// Use the physical memory that 'bootstack' refers to as the kernel
@@ -256,13 +259,6 @@ mem_init(void)
 	
 
 	lcr3(PADDR(kern_pgdir));
-	/*
-	unsigned int *ptr = (unsigned int *)0xf0114fa0;
-	int a = *ptr;
-	ptr = (unsigned int *)mem_init;
-	*ptr = 0;
-	while(1);
-	*/
 	check_page_free_list(0);
 
 	// entry.S set the really important flags in cr0 (including enabling
