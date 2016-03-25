@@ -73,6 +73,7 @@ void vec11();
 void vec12();
 void vec13();
 void vec14();
+void vecsys();
 
 	void
 trap_init(void)
@@ -87,6 +88,7 @@ trap_init(void)
 	SETGATE(idt[0], 1, GD_KT, vec0, 0);
 	SETGATE(idt[1], 1, GD_KT, vec1, 0);
 	SETGATE(idt[2], 1, GD_KT, vec2, 0);
+	// user code can cause breakpoint exception
 	SETGATE(idt[3], 1, GD_KT, vec3, 3);
 	SETGATE(idt[4], 1, GD_KT, vec4, 0);
 	SETGATE(idt[5], 1, GD_KT, vec5, 0);
@@ -99,6 +101,7 @@ trap_init(void)
 	SETGATE(idt[12], 1, GD_KT, vec12, 0);
 	SETGATE(idt[13], 1, GD_KT, vec13, 0);
 	SETGATE(idt[14], 1, GD_KT, vec14, 0);
+	SETGATE(idt[T_SYSCALL], 1, GD_KT, vecsys, 3);
 
 	// Per-CPU setup 
 	trap_init_percpu();
@@ -216,6 +219,15 @@ trap_dispatch(struct Trapframe *tf)
 			break;
 		case T_SIMDERR:
 			break;
+		case T_SYSCALL:
+			// the user program should not be destroyed after making a syscall
+			// so we should return here
+			tf->tf_regs.reg_eax = syscall(tf->tf_regs.reg_eax, tf->tf_regs.reg_edx, 
+					tf->tf_regs.reg_ecx, tf->tf_regs.reg_ebx, tf->tf_regs.reg_edi, 
+					tf->tf_regs.reg_esi);
+			return;
+
+			break;
 		default:
 			break;
 	}
@@ -226,6 +238,8 @@ trap_dispatch(struct Trapframe *tf)
 	if (tf->tf_cs == GD_KT)
 		panic("unhandled trap in kernel");
 	else {
+		// if it's a exception, the user program should never run again
+		// so we destroy it
 		env_destroy(curenv);
 		return;
 	}
