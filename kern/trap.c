@@ -59,12 +59,46 @@ static const char *trapname(int trapno)
 }
 
 
+void vec0();
+void vec1();
+void vec2();
+void vec3();
+void vec4();
+void vec5();
+void vec6();
+void vec7();
+void vec8();
+void vec10();
+void vec11();
+void vec12();
+void vec13();
+void vec14();
+
 void
 trap_init(void)
 {
 	extern struct Segdesc gdt[];
+	
 
 	// LAB 3: Your code here.
+	// we set dpl to 0
+	// so that user program can not use an int
+	// to emulate an exception
+	SETGATE(idt[0], 1, GD_KT, vec0, 0);
+	SETGATE(idt[1], 1, GD_KT, vec1, 0);
+	SETGATE(idt[2], 1, GD_KT, vec2, 0);
+	SETGATE(idt[3], 1, GD_KT, vec3, 0);
+	SETGATE(idt[4], 1, GD_KT, vec4, 0);
+	SETGATE(idt[5], 1, GD_KT, vec5, 0);
+	SETGATE(idt[6], 1, GD_KT, vec6, 0);
+	SETGATE(idt[7], 1, GD_KT, vec7, 0);
+	SETGATE(idt[8], 1, GD_KT, vec8, 0);
+	// exception 9: intel reserved, currently not used
+	SETGATE(idt[10], 1, GD_KT, vec10, 0);
+	SETGATE(idt[11], 1, GD_KT, vec11, 0);
+	SETGATE(idt[12], 1, GD_KT, vec12, 0);
+	SETGATE(idt[13], 1, GD_KT, vec13, 0);
+	SETGATE(idt[14], 1, GD_KT, vec14, 0);
 
 	// Per-CPU setup 
 	trap_init_percpu();

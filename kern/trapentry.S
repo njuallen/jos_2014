@@ -48,8 +48,36 @@
  */
 
 
+TRAPHANDLER_NOEC(vec0, T_DIVIDE)
+TRAPHANDLER_NOEC(vec1, T_DEBUG)
+TRAPHANDLER_NOEC(vec2, T_NMI)
+TRAPHANDLER_NOEC(vec3, T_BRKPT)
+TRAPHANDLER_NOEC(vec4, T_OFLOW)
+TRAPHANDLER_NOEC(vec5, T_BOUND)
+TRAPHANDLER_NOEC(vec6, T_ILLOP)
+TRAPHANDLER_NOEC(vec7, T_DEVICE)
+
+TRAPHANDLER(vec8, T_DBLFLT)
+// exception 9 is not generated recent processors
+TRAPHANDLER(vec10, T_TSS)
+TRAPHANDLER(vec11, T_SEGNP)
+TRAPHANDLER(vec12, T_STACK)
+TRAPHANDLER(vec13, T_GPFLT)
+TRAPHANDLER(vec14, T_PGFLT)
+
+.global _alltraps
+.extern trap
+
 
 /*
  * Lab 3: Your code here for _alltraps
  */
-
+_alltraps:
+pushl %ds
+pushl %es
+pushal
+pushl %esp      # the argument(TrapFrame *tf) to irq_handle
+movw  $GD_KD, %ax
+movw  %ax, %ds
+movw  %ax, %es
+call trap
