@@ -17,6 +17,15 @@ Setting up permission bits in both the page directory and the page table is comp
 This line in check_page actually checks this:
 	assert(kern_pgdir[0] & PTE_U);
 You can read i386-manual 6.4 for more information on directory and page protection.
-To meet certain protection requirements, we can set up pte and pde like this:
+
+###triple fault的调试
+使用 -d int，在结合qemu.log以及手册的说明，查看对应error code的含义。
+另外由于在entry.S中，我们设置了cr0的wp位，所以写一个只读页是非法的，即使按照手册，处于内核态时你对所有页都可读可写。因此对于kernel可写的页，我们应该显式地加上PTE_W flag。
+
+###设置es，ds寄存器
+汇编器似乎只允许将ax之类的寄存器的值赋值给es,ds。因此我们必须要这样写：
+movw $GD_KD, %ax
+movw %ax, %es
+movw %ax, %ds
 
 
