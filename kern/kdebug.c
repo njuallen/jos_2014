@@ -144,9 +144,14 @@ debuginfo_eip(uintptr_t addr, struct Eipdebuginfo *info)
 		// USTABDATA.
 		const struct UserStabData *usd = (const struct UserStabData *) USTABDATA;
 
+		extern struct Env *curenv;
+
 		// Make sure this memory is valid.
 		// Return -1 if it is not.  Hint: Call user_mem_check.
 		// LAB 3: Your code here.
+
+		if(user_mem_check(curenv, usd, sizeof(*usd), PTE_U) < 0)
+			return -1;
 
 		stabs = usd->stabs;
 		stab_end = usd->stab_end;
@@ -155,6 +160,10 @@ debuginfo_eip(uintptr_t addr, struct Eipdebuginfo *info)
 
 		// Make sure the STABS and string table memory is valid.
 		// LAB 3: Your code here.
+		if(user_mem_check(curenv, stabs, stab_end - stabs, PTE_U) < 0)
+			return -1;
+		if(user_mem_check(curenv, stabstr, stabstr_end - stabstr_end, PTE_U) < 0)
+			return -1;
 	}
 
 	// String table validity checks
