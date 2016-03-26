@@ -595,6 +595,24 @@ int
 user_mem_check(struct Env *env, const void *va, size_t len, int perm)
 {
 	// LAB 3: Your code here.
+	uintptr_t addr;
+	for(addr = (uintptr_t)va; addr < ROUNDUP((uintptr_t)va + len, PGSIZE);
+			addr = ROUNDDOWN(addr + PGSIZE, PGSIZE)) {
+		pte_t *pte = pgdir_walk(env->env_pgdir, (const void *)addr, false);
+		if(pte != NULL && addr < ULIM && (*pte & PTE_P)) {
+			// check permissions
+			// user tries to access supervisior's memory
+			if(!(*pte & PTE_U) && (perm & PTE_U))
+				goto fault;
+			// tries to write to a readonly page
+			if(!(*pte & PTE_W) && (perm & PTE_W))
+				goto fault;
+			continue;
+		}
+fault:
+		user_mem_check_addr = addr;
+		return -E_FAULT;
+	}
 
 	return 0;
 }

@@ -209,6 +209,9 @@ trap_dispatch(struct Trapframe *tf)
 		case T_GPFLT:
 			break;
 		case T_PGFLT:
+			// for kernel page fault, we should panic
+			if((tf->tf_cs & 0x3) == 0)
+				panic("kernel page fault");
 			page_fault_handler(tf);
 			break;
 		case T_FPERR:
