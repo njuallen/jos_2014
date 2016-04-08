@@ -119,6 +119,15 @@ env_init(void)
 {
 	// Set up envs array
 	// LAB 3: Your code here.
+	env_free_list = NULL;
+	// here, you should not use size_t!!!!!
+	int i;
+	for (i = NENV - 1; i >= 0; i--) {
+		envs[i].env_id = 0;
+		envs[i].env_status = ENV_FREE;
+		envs[i].env_link = env_free_list;
+		env_free_list = &envs[i];
+	}
 
 	// Per-CPU part of the initialization
 	env_init_percpu();
@@ -182,6 +191,13 @@ env_setup_vm(struct Env *e)
 	//    - The functions in kern/pmap.h are handy.
 
 	// LAB 3: Your code here.
+	
+	// Kernel virtual address of page dir
+	// so we should use page2kva instead of page2pa
+	e->env_pgdir = page2kva(p);
+	p->pp_ref++;
+	memcpy(&e->env_pgdir[PDX(UTOP)], &kern_pgdir[PDX(UTOP)],
+			sizeof(pde_t) * (NPDENTRIES - PDX(UTOP)));
 
 	// UVPT maps the env's own page table read-only.
 	// Permissions: kernel R, user R
@@ -279,6 +295,26 @@ region_alloc(struct Env *e, void *va, size_t len)
 	//   'va' and 'len' values that are not page-aligned.
 	//   You should round va down, and round (va + len) up.
 	//   (Watch out for corner-cases!)
+	//   allen: what kind of corner case ?
+	//   I have not dealt with corner case
+	uintptr_t begin = ROUNDDOWN((uintptr_t)va, PGSIZE);
+	uintptr_t end = ROUNDUP((uintptr_t)(va + len), PGSIZE);
+	uintptr_t ptr;
+	struct PageInfo *p;
+	for(ptr = begin; ptr < end; ptr += PGSIZE) {
+		// do not zero the page
+		p = page_alloc(0);
+		if(p == NULL) {
+			panic("region_alloc failed, can not allocate a physical page\n");
+			return;
+		}
+		int ret = page_insert(e->env_pgdir, p, 
+				(void *)ptr, PTE_U | PTE_W);
+		if(ret < 0) {
+			panic("region_alloc: %e", ret);
+			return;
+		}
+	}
 }
 
 //
@@ -339,7 +375,65 @@ load_icode(struct Env *e, uint8_t *binary)
 	// Now map one page for the program's initial stack
 	// at virtual address USTACKTOP - PGSIZE.
 
+	region_alloc(e, (void *)(USTACKTOP - PGSIZE), PGSIZE);
+
 	// LAB 3: Your code here.
+	struct Elf *elf = (struct Elf *)binary;
+	struct Proghdr *ph = NULL;
+
+	const uint32_t elf_magic = 0x464c457f;
+	uint32_t *p_magic = (uint32_t *)elf;
+	if (*p_magic != elf_magic) {
+		panic("load_icode: bad elf magic\n");
+		return;
+	}
+	uint32_t phoff = elf->e_phoff;
+	uint32_t phentsize = elf->e_phentsize;
+	uint32_t phnum = elf->e_phnum;
+
+
+	/* Load each program segment */
+	int i = 0;
+
+	for(i = 0; i < phnum; i++ ) {
+		ph = (void *)((uint32_t)elf + phoff + i * phentsize);
+		/* Scan the program header table, load each segment into memory */
+		if(ph->p_type == ELF_PROG_LOAD) {
+			// allocate enough memory for this segment
+			region_alloc(e, (void *)ph->p_va, ph->p_memsz);
+			unsigned int va = ph->p_va;
+			// the num of bytes already loaded
+			unsigned int data_loaded = 0;
+
+			while(va < (ph->p_va + ph->p_memsz))
+			{
+				unsigned int offset = PGOFF(va);
+				// forced alignment on 4k boundary
+				va &=0xfffff000;
+				struct PageInfo *p = page_lookup(e->env_pgdir, (void *)va, NULL);
+				if(p == NULL) {
+					panic("load_icode: page not mapped\n");
+					return;
+				}
+				// in order to write to the page we do not have to change pgdir
+				// we only need to get the address of the physical page
+				// and write to it
+				uintptr_t addr = (uintptr_t)page2kva(p);
+
+				memset((void *)addr, 0, PGSIZE);
+
+				// the number of bytes to load this time
+				unsigned int load_byte_num = PGSIZE - offset;
+				if((ph->p_filesz - data_loaded) < load_byte_num)
+					load_byte_num = ph->p_filesz - data_loaded;
+
+				memcpy((void *)(addr + offset), binary + ph->p_offset + data_loaded, load_byte_num);
+				va += 4096;
+				data_loaded += load_byte_num;
+			}
+		}
+	}
+	e->env_tf.tf_eip = elf->e_entry;
 }
 
 //
@@ -353,6 +447,15 @@ void
 env_create(uint8_t *binary, enum EnvType type)
 {
 	// LAB 3: Your code here.
+	struct Env *newenv;
+	int ret = env_alloc(&newenv, 0);
+	if(ret < 0) {
+		panic("env_alloc: %e", ret);
+		return;
+	}
+	load_icode(newenv, binary);
+	newenv->env_type = type;
+	return;
 }
 
 //
@@ -482,6 +585,18 @@ env_run(struct Env *e)
 	//	e->env_tf to sensible values.
 
 	// LAB 3: Your code here.
+	// another environment is running
+	if(curenv != NULL) {
+		if(curenv->env_status == ENV_RUNNING)
+			curenv->env_status = ENV_RUNNABLE;
+	}
+	curenv = e;
+	curenv->env_status = ENV_RUNNING;
+	curenv->env_runs++;
+	// the env_pgdir field of a Env structure stores the kernel virtual address of pgdir
+	// so we should use PADDR
+	lcr3((uint32_t)PADDR(curenv->env_pgdir));
+	env_pop_tf(&curenv->env_tf);
 
 	panic("env_run not yet implemented");
 }

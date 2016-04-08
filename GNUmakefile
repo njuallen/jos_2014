@@ -142,7 +142,7 @@ include user/Makefrag
 CPUS ?= 1
 
 QEMUOPTS = -hda $(OBJDIR)/kern/kernel.img -serial mon:stdio -gdb tcp::$(GDBPORT)
-QEMUOPTS += $(shell if $(QEMU) -nographic -help | grep -q '^-D '; then echo '-D qemu.log'; fi)
+QEMUOPTS += $(shell if $(QEMU) -nographic -d int -help | grep -q '^-D '; then echo '-D qemu.log'; fi)
 IMAGES = $(OBJDIR)/kern/kernel.img
 QEMUOPTS += -smp $(CPUS)
 QEMUOPTS += $(QEMUEXTRA)
@@ -156,12 +156,14 @@ gdb:
 pre-qemu: .gdbinit
 
 qemu: $(IMAGES) pre-qemu
-	$(QEMU) $(QEMUOPTS)
+	objdump -d obj/kern/kernel > obj/kern/kernel.txt
+	$(QEMU) $(QEMUOPTS) 
 
 qemu-nox: $(IMAGES) pre-qemu
 	@echo "***"
 	@echo "*** Use Ctrl-a x to exit qemu"
 	@echo "***"
+	objdump -d obj/kern/kernel > obj/kern/kernel.txt
 	$(QEMU) -nographic $(QEMUOPTS)
 
 qemu-gdb: $(IMAGES) pre-qemu
