@@ -72,8 +72,10 @@ dumbfork(void)
 	duppage(envid, ROUNDDOWN(&addr, PGSIZE));
 
 	// Start the child environment running
-	if ((r = sys_env_set_status(envid, ENV_RUNNABLE)) < 0)
+	if ((r = sys_env_set_status(envid, ENV_RUNNABLE)) < 0) {
+		panic("game: %d\n", ENV_RUNNABLE);
 		panic("sys_env_set_status: %e", r);
+	}
 
 	return envid;
 }

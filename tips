@@ -30,3 +30,9 @@ movw %ax, %ds
 
 ###trap_dispatch
 trap_dispatch最后有一个env_destroy，那个是针对其他exception的。对于syscall，我们应该返回到用户进程，而不应该destroy用户进程，如果destroy了它，你就无法通过testbss。
+
+###mpentry.s中使用的一些小技巧
+mpentry.S的代码只有一份，但我们要给每个cpu设置不同的内核栈，因此这里采取的方式是将mpentry.S中设置的栈的值变成kernel中的一个全局变量，而汇编代码文件中对其的访问最终链接到那里。我们只要按顺序将其设为不同的值即可。
+
+##lab4
+没有特别的坑，专心照着讲义以及注释的指示完成就好了。但是在完成那些函数后，要自己把对那些函数的调用加到syscall里面。

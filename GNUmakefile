@@ -164,7 +164,7 @@ qemu-nox: $(IMAGES) pre-qemu
 	@echo "*** Use Ctrl-a x to exit qemu"
 	@echo "***"
 	objdump -d obj/kern/kernel > obj/kern/kernel.txt
-	$(QEMU) -nographic $(QEMUOPTS)
+	$(QEMU) -nographic -d int $(QEMUOPTS)
 
 qemu-gdb: $(IMAGES) pre-qemu
 	@echo "***"

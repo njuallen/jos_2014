@@ -144,7 +144,7 @@ debuginfo_eip(uintptr_t addr, struct Eipdebuginfo *info)
 		// USTABDATA.
 		const struct UserStabData *usd = (const struct UserStabData *) USTABDATA;
 
-		extern struct Env *curenv;
+		//extern struct Env *curenv;
 
 		// Make sure this memory is valid.
 		// Return -1 if it is not.  Hint: Call user_mem_check.

@@ -596,6 +596,7 @@ env_run(struct Env *e)
 	// the env_pgdir field of a Env structure stores the kernel virtual address of pgdir
 	// so we should use PADDR
 	lcr3((uint32_t)PADDR(curenv->env_pgdir));
+	unlock_kernel();
 	env_pop_tf(&curenv->env_tf);
 
 	panic("env_run not yet implemented");

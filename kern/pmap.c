@@ -299,6 +299,22 @@ mem_init_mp(void)
 	//     Permissions: kernel RW, user NONE
 	//
 	// LAB 4: Your code here:
+	int i;
+	for(i = 0; i < NCPU; i++) {
+		uintptr_t kstacktop_i = KSTACKTOP - i * (KSTKSIZE + KSTKGAP);
+		// the actual kernel stack
+		boot_map_region(kern_pgdir, kstacktop_i - KSTKSIZE, 
+				KSTKSIZE, PADDR(percpu_kstacks[i]), PTE_W);
+		// kernel stack guard pages
+		uintptr_t va;
+		for(va = kstacktop_i - KSTKSIZE - KSTKGAP; 
+				va < kstacktop_i - KSTKSIZE; va += PGSIZE) {
+			pte_t *pte = pgdir_walk(kern_pgdir, (const void *)va, true);
+			if (pte == NULL)
+				panic("initialize kernel stack failed!\n");
+			*pte = 0x0;
+		}
+	}
 
 }
 
@@ -356,6 +372,7 @@ page_init(void)
 	// do not touch them
 	physaddr_t first_free_page = PADDR(boot_alloc(0));
 	pa2page(first_free_page)->pp_link = &pages[PGNUM(IOPHYSMEM) - 1];
+	pages[PGNUM(MPENTRY_PADDR) + 1].pp_link = &pages[PGNUM(MPENTRY_PADDR) - 1];
 }
 
 //
@@ -637,7 +654,16 @@ mmio_map_region(physaddr_t pa, size_t size)
 	// Hint: The staff solution uses boot_map_region.
 	//
 	// Your code here:
-	panic("mmio_map_region not implemented");
+	physaddr_t pa_start = ROUNDDOWN(pa, PGSIZE);
+	size = ROUNDUP(size, PGSIZE);
+	size_t offset = pa - pa_start;
+	if(base + size > MMIOLIM) {
+		panic("mmio_map_region failed: no more memory for memory mapped I/O");
+		return NULL;
+	}
+	boot_map_region(kern_pgdir, base, size, pa_start, PTE_PCD | PTE_PWT | PTE_W);
+	base += size;
+	return (void *)(base - size + offset);
 }
 
 static uintptr_t user_mem_check_addr;
