@@ -330,3 +330,7 @@ always:
 
 .PHONY: all always \
 	handin git-handin tarball tarball-pref clean realclean distclean grade handin-prep handin-check
+
+submit:clean
+	cd .. && tar cvj $(shell pwd | grep -o '[^/]*$$') > jos.tar.bz2
+
