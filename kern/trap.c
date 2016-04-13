@@ -1,6 +1,7 @@
 #include <inc/mmu.h>
 #include <inc/x86.h>
 #include <inc/assert.h>
+#include <inc/string.h>
 
 #include <kern/pmap.h>
 #include <kern/trap.h>
@@ -399,6 +400,50 @@ page_fault_handler(struct Trapframe *tf)
 	// LAB 4: Your code here.
 
 	// Destroy the environment that caused the fault.
+	// first, we check whether the user has registered the page fault handler
+	if(curenv->env_pgfault_upcall) {
+		// second we check that whether the user has allocate
+		// a page for its exception stack.
+		// if not allocated
+		// curenv will be destroyed in user_mem_assert();
+		user_mem_assert(curenv, (const void *)(UXSTACKTOP - PGSIZE), 
+				PGSIZE, PTE_W);
+
+		uint32_t uxstack_top = UXSTACKTOP;
+		// if it is a recursive page fault call
+		if(tf->tf_esp >= (UXSTACKTOP - PGSIZE) 
+				&& tf->tf_esp < UXSTACKTOP)
+			uxstack_top = tf->tf_esp;
+
+		// the meaning and usage of the so called scratch space
+		// the scratch space is used in _pgfault_upcall,
+		// read it and you will know the meaning of the scratch space
+		// it is used for lay down the argument for C procedure that
+		// deals with page_fault,
+		// it is also used to lay down the returning address
+		uxstack_top -= sizeof(uint32_t) + sizeof(struct UTrapframe);
+		if(uxstack_top < (UXSTACKTOP - PGSIZE))
+			goto destroy;
+		// build the UTrapframe on the exception handling stack
+		struct UTrapframe *utf = (struct UTrapframe *)uxstack_top;
+
+		utf->utf_fault_va = fault_va;
+		utf->utf_err = tf->tf_err;
+		memcpy(&utf->utf_regs, &tf->tf_regs, sizeof(struct PushRegs));
+		utf->utf_eip = tf->tf_eip;
+		utf->utf_eflags = tf->tf_eflags;
+		utf->utf_esp = tf->tf_esp;
+
+		// modify trap frame so that it goes to the user-level
+		// page fault handler after env_run();
+		tf->tf_eip = (uintptr_t)curenv->env_pgfault_upcall;
+		tf->tf_esp = uxstack_top;
+
+		// branch to user level page fault handler
+		env_run(curenv);
+	}
+
+destroy:
 	cprintf("[%08x] user fault va %08x ip %08x\n",
 			curenv->env_id, fault_va, tf->tf_eip);
 	print_trapframe(tf);
