@@ -95,13 +95,12 @@ _pgfault_upcall:
 	// no longer use arithmetic operations or anything else that
 	// modifies eflags.
 	// LAB 4: Your code here.
-	popf
+	popfl
 
 	// Switch back to the adjusted trap-time stack.
 	// LAB 4: Your code here.
 	// popl %esp is tricky, so I will not use it
-	add $0x4, %esp
-	movl -0x4(%esp), %esp
+	movl (%esp), %esp
 
 
 
