@@ -32,16 +32,16 @@ set_pgfault_handler(void (*handler)(struct UTrapframe *utf))
 		// get the id the current environment
 		envid_t id = sys_getenvid();
 		if(id < 0)
-			panic("set_pgfault_handler call sys_getenvid failed:%e\n", id);
+			panic("sys_getenvid: %e\n", id);
 		// allocate an exception stack
 		r = sys_page_alloc(id, (void *)(UXSTACKTOP - PGSIZE), PTE_U | PTE_P | PTE_W);
 		if(r < 0)
-			panic("set_pgfault_handler call sys_page_alloc failed:%e\n", r);
+			panic("sys_page_alloc failed: %e\n", r);
 
 		// register the handler entry
 		r = sys_env_set_pgfault_upcall(id, _pgfault_upcall);
 		if(r < 0)
-			panic("set_pgfault_handler call sys_env_set_pgfault failed:%e\n", r);
+			panic("sys_env_set_pgfault: %e\n", r);
 	}
 
 	// Save handler pointer for assembly to call.

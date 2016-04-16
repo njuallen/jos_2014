@@ -34,10 +34,23 @@ trap_dispatch最后有一个env_destroy，那个是针对其他exception的。�
 ###mpentry.s中使用的一些小技巧
 mpentry.S的代码只有一份，但我们要给每个cpu设置不同的内核栈，因此这里采取的方式是将mpentry.S中设置的栈的值变成kernel中的一个全局变量，而汇编代码文件中对其的访问最终链接到那里。我们只要按顺序将其设为不同的值即可。
 
-##lab4
-没有特别的坑，专心照着讲义以及注释的指示完成就好了。但是在完成那些函数后，要自己把对那些函数的调用加到syscall里面。
+##lab3
+###load_icode
+在load_icode里面。最好根据elf段的读写权限合理设置页的属性，不要全部设置成读写。
 
-user-level-pagefault-handling
+##lab4
+
+###pfentry.S和set_pgfault_handler
 entrycode的完成想一想，再细心地写一写就好了。但是要理解我们给用户封装的这个set_pgfault_handler这个接口并不是直接把用户给的handler用来注册给OS。我们要想办法让控制权先进entrycode，再跳转到用户的handler。因此我们在实现set_pgfault_handler时并不是每次调用它都要通过系统调用重新注册handler。我们通过系统调用注册的是一个固定的入口点：entrycode。因此我们只需要在第一次时通过系统调用注册它。这里通过链接的方式，让C代码和entrycode里的汇编代码完美配合（参见_pgfault_handler变量）。
 操作系统只管把控制权转移到lib里的entrycode，而用户态的lib负责将控制权再转移到用户定义的handler上去。
 我那个set_pgfault_handler里没有做太多的错误处理，系统调用只要一出错，就panic。
+
+###duppage
+在duppage中，我们要更改我们当前地址空间中这一页的权限，不能采用先page_unmap在page_map的方式，因为有可能你当前unmap的页正好放着你当前正在执行的的代码。如果你把当前页unmap了，你有可能再也无法执行接下来的map了。所以正确的方式是直接用map，把子进程地址空间中的对应页map过来或者把当前地址空间中其他页map过来，通过这种方式来更改权限。
+
+###对uvpt的访问
+看了讲义上的说法，你可能认为uvpt那4MB空间真的是连续的，然后就直接对uvpt进行下标访问了，然后就会出page fault。仔细想一想，我们就会发现page_directory中并不是每一项都有效，那1024个二级页表中有好多实际是没有分配的。我们必须要先检查uvpd，看看我们要访问的某一个二级页表是否存在，然后才能访问。我把检查加访问合并成了一个函数叫做get_pte，如果访问的页表项不存在，就返回0。还有一个要注意的是，在fork中，我们对每个存在的页都要duppage，但是由于绝大部分页都是不存在的，那个for循环如果写成两重的话，如果发现页表不存在，就不再检查里面的页表项了，这样子会更快。
+
+###帮助子进程注册pgfault_upcall的问题
+child与parent拥有相同的地址空间，这意味着他们在lib中的那个_pgfault_handler拥有同样的值，但是他们各自在env结构体中的upcall入口点却有不同的值。因为father调用set_pgfault_handler，注册了入口点，同时更改了内存中的_pgfault_handler。child由于和father拥有相同的地址空间，它与father拥有相同的_pgfault_handler。但子进程的env结构体中的page fault入口点却与father不同。sys_exo_fork中只拷贝env结构体中的寄存器值，其他的任何东西都没有被拷贝。
+所以，父进程还必须要帮子进程注册pgfault_upcall。子进程不能自己注册，因为子进程的栈是copy on write的，现在无法向栈上写任何东西，因而无法进行任何函数调用。
