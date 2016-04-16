@@ -54,3 +54,13 @@ entrycode的完成要仔细想一想，同时一定要遵从注释的说明！�
 ###帮助子进程注册pgfault_upcall的问题
 child与parent拥有相同的地址空间，这意味着他们在lib中的那个_pgfault_handler拥有同样的值，但是他们各自在env结构体中的upcall入口点却有不同的值。因为father调用set_pgfault_handler，注册了入口点，同时更改了内存中的_pgfault_handler。child由于和father拥有相同的地址空间，它与father拥有相同的_pgfault_handler。但子进程的env结构体中的page fault入口点却与father不同。sys_exo_fork中只拷贝env结构体中的寄存器值，其他的任何东西都没有被拷贝。
 所以，父进程还必须要帮子进程注册pgfault_upcall。子进程不能自己注册，因为子进程的栈是copy on write的，现在无法向栈上写任何东西，因而无法进行任何函数调用。
+
+###page_fault_handler中check函数的问题
+注释说：
+// If there's no page fault upcall, the environment didn't allocate a
+// page for its exception stack or can't write to it, or the exception
+// stack overflows, then destroy the environment that caused the fault.
+// Note that the grade script assumes you will first check for the page
+// fault upcall and print the "user fault va" message below if there is
+// none.  The remaining three checks can be combined into a single test.
+后三类的check可以合并成一个，那就是对当前UTrapframe是否可写的检查，我们只需要使用一个user_mem_check检查一下当前的UTrapframe是否可以写在栈上就可以了。只有这样才能通过part B的若干个test。

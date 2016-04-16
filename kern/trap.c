@@ -402,12 +402,6 @@ page_fault_handler(struct Trapframe *tf)
 	// Destroy the environment that caused the fault.
 	// first, we check whether the user has registered the page fault handler
 	if(curenv->env_pgfault_upcall) {
-		// second we check that whether the user has allocate
-		// a page for its exception stack.
-		// if not allocated
-		// curenv will be destroyed in user_mem_assert();
-		user_mem_assert(curenv, (const void *)(UXSTACKTOP - PGSIZE), 
-				PGSIZE, PTE_W);
 
 		uint32_t uxstack_top = UXSTACKTOP;
 		// if it is a recursive page fault call
@@ -422,10 +416,12 @@ page_fault_handler(struct Trapframe *tf)
 		// deals with page_fault,
 		// it is also used to lay down the returning address
 		uxstack_top -= sizeof(uint32_t) + sizeof(struct UTrapframe);
-		if(uxstack_top < (UXSTACKTOP - PGSIZE))
-			goto destroy;
+
 		// build the UTrapframe on the exception handling stack
 		struct UTrapframe *utf = (struct UTrapframe *)uxstack_top;
+		// first check the stack
+		user_mem_assert(curenv, (const void *)(utf), 
+				sizeof(uint32_t) + sizeof(struct UTrapframe), PTE_W);
 
 		utf->utf_fault_va = fault_va;
 		utf->utf_err = tf->tf_err;
@@ -443,7 +439,6 @@ page_fault_handler(struct Trapframe *tf)
 		env_run(curenv);
 	}
 
-destroy:
 	cprintf("[%08x] user fault va %08x ip %08x\n",
 			curenv->env_id, fault_va, tf->tf_eip);
 	print_trapframe(tf);
