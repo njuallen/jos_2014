@@ -202,6 +202,30 @@ sys_page_alloc(envid_t envid, void *va, int perm)
 	panic("sys_page_alloc not implemented");
 }
 
+// simply for kernel syscall usage
+// simply remap, no checking is done
+// those who call it must do the necessary checking
+static int
+page_map(struct Env *srcenv, void *srcva, 
+		struct Env *dstenv, void *dstva, int perm)
+{
+	// get the physical page mapped at srcva
+	pte_t *pte;
+	struct PageInfo *pp = page_lookup(srcenv->env_pgdir, srcva, &pte);
+	if(pp == NULL)
+		return -E_INVAL;
+
+	// do not write to a read-only page
+	if((*pte & PTE_W) == 0 && (perm & PTE_W))
+		return -E_INVAL;
+
+	// insert the page
+	int ret = page_insert(dstenv->env_pgdir, pp, dstva, perm);
+	if(ret < 0)
+		return -E_NO_MEM;
+	return 0;
+}
+
 // Map the page of memory at 'srcva' in srcenvid's address space
 // at 'dstva' in dstenvid's address space with permission 'perm'.
 // Perm has the same restrictions as in sys_page_alloc, except
@@ -249,23 +273,12 @@ sys_page_map(envid_t srcenvid, void *srcva,
 			|| envid2env(dstenvid, &dstenv, 1) < 0)
 		return -E_BAD_ENV;
 
-	// get the physical page mapped at srcva
-	pte_t *pte;
-	struct PageInfo *pp = page_lookup(srcenv->env_pgdir, srcva, &pte);
-	if(pp == NULL)
-		return -E_INVAL;
-
-	// do not write to a read-only page
-	if((*pte & PTE_W) == 0 && (perm & PTE_W))
-		return -E_INVAL;
-
-	// insert the page
-	int ret = page_insert(dstenv->env_pgdir, pp, dstva, perm);
-	if(ret < 0)
-		return -E_NO_MEM;
+	int r;
+	if((r = page_map(srcenv, srcva, dstenv, dstva, perm)) < 0)
+		return r;
 	return 0;
-	panic("sys_page_map not implemented");
 }
+
 
 // Unmap the page of memory at 'va' in the address space of 'envid'.
 // If no page is mapped, the function silently succeeds.
@@ -340,7 +353,64 @@ static int
 sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 {
 	// LAB 4: Your code here.
-	panic("sys_ipc_try_send not implemented");
+	int r;
+	// check envid
+	// permissions not checked
+	struct Env *dstenv;
+	if(envid2env(envid, &dstenv, 0) < 0)
+		return -E_BAD_ENV;
+
+	// is dstenv currently blocked ?
+	if(!dstenv->env_ipc_recving)
+		return -E_IPC_NOT_RECV;
+
+	// try to send a page
+	if((uint32_t)srcva < UTOP) {
+		// is srcva page-aligned ?
+		if(((uint32_t)srcva % PGSIZE) != 0)
+			return -E_INVAL;
+
+		// check perm
+		if((perm & (PTE_PWT | PTE_PCD | PTE_A 
+						| PTE_D | PTE_PS | PTE_G)) 
+				|| !(perm & PTE_P)
+				|| !(perm & PTE_U))
+			return -E_INVAL; 
+
+		// is the page mapped in the caller's address space ?
+		if(user_mem_check(curenv, srcva, PGSIZE, PTE_U) < 0)
+			return -E_NO_MEM;
+
+		// does the caller want to map a read-only page writable ?
+		if((perm & PTE_W) && (user_mem_check(curenv, srcva, PGSIZE, PTE_W | PTE_U) < 0))
+			return -E_INVAL;
+
+		// try sending the page
+		dstenv->env_ipc_perm = 0;
+		// is the receiver expecting a page ?
+		if(((uint32_t)(dstenv->env_ipc_dstva) < UTOP) 
+				&& ((uint32_t)(dstenv->env_ipc_dstva) % PGSIZE) == 0) {
+			// do not use sys_page_map
+			// since sys_page_map checks for permissions
+			// only parent can manipulate children
+			// we need to freely remap pages between different environments 
+			// without permission checking
+			if((r = page_map(curenv, srcva,
+							dstenv, dstenv->env_ipc_dstva, perm)) < 0)
+				return -E_NO_MEM;
+			else
+				// the page was transferred
+				dstenv->env_ipc_perm = perm;
+		}
+	}
+
+	// actually send the message
+	dstenv->env_ipc_recving = 0;
+	dstenv->env_ipc_from = curenv->env_id;
+	dstenv->env_ipc_value = value;
+	// make the receiver runnable
+	dstenv->env_status = ENV_RUNNABLE;
+	return 0;
 }
 
 // Block until a value is ready.  Record that you want to receive
@@ -358,7 +428,18 @@ static int
 sys_ipc_recv(void *dstva)
 {
 	// LAB 4: Your code here.
-	panic("sys_ipc_recv not implemented");
+	// check for error
+	if(((uint32_t)dstva < UTOP) && ((uint32_t)dstva % PGSIZE) != 0)
+		return -E_INVAL;
+	curenv->env_ipc_recving = true;
+	curenv->env_ipc_dstva = dstva;
+	// mark as not runnable and give up the cpu
+	curenv->env_status = ENV_NOT_RUNNABLE;
+	// if it's successful, we will not return
+	// eventually we will return 0 on success
+	// the returning value is stored in eax
+	curenv->env_tf.tf_regs.reg_eax = 0;
+	sched_yield();
 	return 0;
 }
 
@@ -408,6 +489,12 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 		case SYS_env_set_pgfault_upcall:
 			return sys_env_set_pgfault_upcall(a1, (void *)a2);
 			break;	
+		case SYS_ipc_recv:
+			return sys_ipc_recv((void *)a1);
+			break;
+		case SYS_ipc_try_send:
+			return sys_ipc_try_send(a1, a2, (void *)a3, a4);
+			break;
 		default:
 			return -E_NO_SYS;
 	}
