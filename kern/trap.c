@@ -83,6 +83,14 @@ void vec13();
 void vec14();
 void vecsys();
 
+void irq0();
+void irq1();
+void irq4();
+void irq14();
+// spurious irq
+void irq_spurious();
+void irq_error();
+
 	void
 trap_init(void)
 {
@@ -93,23 +101,42 @@ trap_init(void)
 	// we set dpl to 0
 	// so that user program can not use an int
 	// to emulate an exception
-	SETGATE(idt[0], 1, GD_KT, vec0, 0);
-	SETGATE(idt[1], 1, GD_KT, vec1, 0);
-	SETGATE(idt[2], 1, GD_KT, vec2, 0);
+	SETGATE(idt[0], 0, GD_KT, vec0, 0);
+	SETGATE(idt[1], 0, GD_KT, vec1, 0);
+	SETGATE(idt[2], 0, GD_KT, vec2, 0);
 	// user code can cause breakpoint exception
-	SETGATE(idt[3], 1, GD_KT, vec3, 3);
-	SETGATE(idt[4], 1, GD_KT, vec4, 0);
-	SETGATE(idt[5], 1, GD_KT, vec5, 0);
-	SETGATE(idt[6], 1, GD_KT, vec6, 0);
-	SETGATE(idt[7], 1, GD_KT, vec7, 0);
-	SETGATE(idt[8], 1, GD_KT, vec8, 0);
+	SETGATE(idt[3], 0, GD_KT, vec3, 3);
+	SETGATE(idt[4], 0, GD_KT, vec4, 0);
+	SETGATE(idt[5], 0, GD_KT, vec5, 0);
+	SETGATE(idt[6], 0, GD_KT, vec6, 0);
+	SETGATE(idt[7], 0, GD_KT, vec7, 0);
+	SETGATE(idt[8], 0, GD_KT, vec8, 0);
 	// exception 9: intel reserved, currently not used
-	SETGATE(idt[10], 1, GD_KT, vec10, 0);
-	SETGATE(idt[11], 1, GD_KT, vec11, 0);
-	SETGATE(idt[12], 1, GD_KT, vec12, 0);
-	SETGATE(idt[13], 1, GD_KT, vec13, 0);
-	SETGATE(idt[14], 1, GD_KT, vec14, 0);
-	SETGATE(idt[T_SYSCALL], 1, GD_KT, vecsys, 3);
+	SETGATE(idt[10], 0, GD_KT, vec10, 0);
+	SETGATE(idt[11], 0, GD_KT, vec10, 0);
+	SETGATE(idt[12], 0, GD_KT, vec12, 0);
+	SETGATE(idt[13], 0, GD_KT, vec13, 0);
+	SETGATE(idt[14], 0, GD_KT, vec14, 0);
+
+	// irq
+	SETGATE(idt[IRQ_OFFSET + IRQ_TIMER], 0, GD_KT, irq0, 0);
+	SETGATE(idt[IRQ_OFFSET + IRQ_KBD], 0, GD_KT, irq1, 0);
+	SETGATE(idt[IRQ_OFFSET + 2], 0, GD_KT, irq_spurious, 0);
+	SETGATE(idt[IRQ_OFFSET + 3], 0, GD_KT, irq_spurious, 0);
+	SETGATE(idt[IRQ_OFFSET + IRQ_SERIAL], 0, GD_KT, irq4, 0);
+	SETGATE(idt[IRQ_OFFSET + 5], 0, GD_KT, irq_spurious, 0);
+	SETGATE(idt[IRQ_OFFSET + 6], 0, GD_KT, irq_spurious, 0);
+	SETGATE(idt[IRQ_OFFSET + 7], 0, GD_KT, irq_spurious, 0);
+	SETGATE(idt[IRQ_OFFSET + 8], 0, GD_KT, irq_spurious, 0);
+	SETGATE(idt[IRQ_OFFSET + 9], 0, GD_KT, irq_spurious, 0);
+	SETGATE(idt[IRQ_OFFSET + 10], 0, GD_KT, irq_spurious, 0);
+	SETGATE(idt[IRQ_OFFSET + 11], 0, GD_KT, irq_spurious, 0);
+	SETGATE(idt[IRQ_OFFSET + 12], 0, GD_KT, irq_spurious, 0);
+	SETGATE(idt[IRQ_OFFSET + 13], 0, GD_KT, irq_spurious, 0);
+	SETGATE(idt[IRQ_OFFSET + IRQ_IDE], 0, GD_KT, irq14, 0);
+
+
+	SETGATE(idt[T_SYSCALL], 0, GD_KT, vecsys, 3);
 
 	// Per-CPU setup 
 	trap_init_percpu();
@@ -280,6 +307,11 @@ trap_dispatch(struct Trapframe *tf)
 	// Handle clock interrupts. Don't forget to acknowledge the
 	// interrupt using lapic_eoi() before calling the scheduler!
 	// LAB 4: Your code here.
+	if (tf->tf_trapno == IRQ_OFFSET + IRQ_TIMER) {
+		lapic_eoi();
+		sched_yield();
+		return;
+	}
 
 	// Unexpected trap: The user process or the kernel has a bug.
 	print_trapframe(tf);

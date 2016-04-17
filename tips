@@ -64,3 +64,6 @@ child与parent拥有相同的地址空间，这意味着他们在lib中的那个
 // fault upcall and print the "user fault va" message below if there is
 // none.  The remaining three checks can be combined into a single test.
 后三类的check可以合并成一个，那就是对当前UTrapframe是否可写的检查，我们只需要使用一个user_mem_check检查一下当前的UTrapframe是否可以写在栈上就可以了。只有这样才能通过part B的若干个test。
+
+###IDT的初始化
+JOS中，在kernel中，是关中断的。所以所有的IDT表项都必须设置为中断门，让硬件自动关中断，而不能设置为陷阱门。硬件自动关中断后，在iret时会把栈上的eflags自动pop回去，顺便就开了中断。
