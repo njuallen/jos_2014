@@ -42,6 +42,16 @@ static uint32_t sys_gettick(void)
 	return trap_tick;	
 }
 
+// sleep for at least n ticks
+static void sys_sleep(uint32_t n) {
+	if(n > 0) {
+		curenv->env_status = ENV_SLEEPING;
+		curenv->env_time_to_sleep = n;
+		sched_yield();
+	}
+	return;
+}
+
 // Returns the current environment's envid.
 static envid_t
 sys_getenvid(void)
@@ -477,6 +487,10 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 			return sys_gettick();
 		case SYS_yield:
 			sys_yield();
+			return 0;
+			break;
+		case SYS_sleep:
+			sys_sleep(a1);
 			return 0;
 			break;
 		case SYS_exofork:

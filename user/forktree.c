@@ -33,6 +33,14 @@ forktree(const char *cur)
 void
 umain(int argc, char **argv)
 {
+	if(fork() == 0) {
+		while(1) {
+			cprintf("child!\n");
+			sys_sleep(200);
+		}
+	}
+	while(1);
+
 	forktree("");
 }
 

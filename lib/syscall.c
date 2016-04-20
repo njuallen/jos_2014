@@ -66,10 +66,17 @@ sys_gettick(void)
 {
 	 return syscall(SYS_gettick, 0, 0, 0, 0, 0, 0);
 }
+
 void
 sys_yield(void)
 {
 	syscall(SYS_yield, 0, 0, 0, 0, 0, 0);
+}
+
+void
+sys_sleep(uint32_t time_to_sleep)
+{
+	syscall(SYS_sleep, 0, time_to_sleep, 0, 0, 0, 0);
 }
 
 int

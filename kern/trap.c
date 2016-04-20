@@ -309,8 +309,18 @@ trap_dispatch(struct Trapframe *tf)
 	// interrupt using lapic_eoi() before calling the scheduler!
 	// LAB 4: Your code here.
 	if (tf->tf_trapno == IRQ_OFFSET + IRQ_TIMER) {
-		trap_tick++;
 		lapic_eoi();
+		trap_tick++;
+
+		// update sleep time
+		struct Env *ptr;
+		for(ptr = &envs[0]; ptr < &envs[NENV]; ptr++)
+			if(ptr->env_status == ENV_SLEEPING) {
+				ptr->env_time_to_sleep--;
+				if(ptr->env_time_to_sleep == 0)
+					ptr->env_status = ENV_RUNNABLE;
+			}
+
 		sched_yield();
 		return;
 	}
