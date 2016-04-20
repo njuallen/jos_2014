@@ -234,6 +234,7 @@ print_regs(struct PushRegs *regs)
 	cprintf("  eax  0x%08x\n", regs->reg_eax);
 }
 
+uint32_t trap_tick = 0;
 	static void
 trap_dispatch(struct Trapframe *tf)
 {
@@ -308,6 +309,7 @@ trap_dispatch(struct Trapframe *tf)
 	// interrupt using lapic_eoi() before calling the scheduler!
 	// LAB 4: Your code here.
 	if (tf->tf_trapno == IRQ_OFFSET + IRQ_TIMER) {
+		trap_tick++;
 		lapic_eoi();
 		sched_yield();
 		return;

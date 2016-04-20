@@ -17,6 +17,53 @@
 
 static void boot_aps(void);
 
+static void video_write_test() {
+	char *vmem = (char *)VMEM;
+	int i, j;
+	int k;
+	for(k = 0; k < 15; k++) {
+		for(i = 0; i < 20; i++)
+			for(j = 0; j < 800; j++) {
+				*(vmem++) = 0x00;
+				*(vmem++) = 0xff;
+				*(vmem++) = 0x00;
+			}
+		for(i = 0; i < 20; i++)
+			for(j = 0; j < 800; j++) {
+				*(vmem++) = 0x00;
+				*(vmem++) = 0x00;
+				*(vmem++) = 0xff;
+			}
+	}
+}
+
+struct ModeInfoBlock {
+	uint16_t attributes;
+	uint8_t winA,winB;
+	uint16_t granularity;
+	uint16_t winsize;
+	uint16_t segmentA, segmentB;
+	//VBE_FAR(realFctPtr);
+	// I replaced VBE_FAR with this
+	void *ptr;
+	uint16_t pitch; // bytes per scanline
+
+	uint16_t Xres, Yres;
+	uint8_t Wchar, Ychar, planes, bpp, banks;
+	uint8_t memory_model, bank_size, image_pages;
+	uint8_t reserved0;
+
+	uint8_t red_mask, red_position;
+	uint8_t green_mask, green_position;
+	uint8_t blue_mask, blue_position;
+	uint8_t rsv_mask, rsv_position;
+	uint8_t directcolor_attributes;
+
+	uint32_t physbase;  // your LFB (Linear Framebuffer) address ;
+	uint32_t reserved1;
+	uint16_t reserved2;
+} __attribute__((packed));
+
 
 void
 i386_init(void)
@@ -36,6 +83,16 @@ i386_init(void)
 
 	// Lab 2 memory management initialization functions
 	mem_init();
+
+#ifdef MODE_INFO
+	// print some information about the display mode
+	struct ModeInfoBlock *mode_info = KADDR(0x7a00);
+	cprintf("physbase: %x\n", mode_info->physbase);
+	cprintf("banksize: %d\n", mode_info->bank_size);
+	cprintf("Xres:%d Yres:%d\n", mode_info->Xres, mode_info->Yres);
+	cprintf("pitch:%d\n", mode_info->pitch);
+#endif
+	video_write_test();
 
 	// Lab 3 user environment initialization functions
 	env_init();

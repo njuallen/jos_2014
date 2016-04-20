@@ -20,6 +20,7 @@ readline(const char *prompt)
 			cprintf("read error: %e\n", c);
 			return NULL;
 		} else if ((c == '\b' || c == '\x7f') && i > 0) {
+			// back space or delete
 			if (echoing)
 				cputchar('\b');
 			i--;

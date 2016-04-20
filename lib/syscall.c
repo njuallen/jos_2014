@@ -61,6 +61,11 @@ sys_getenvid(void)
 	 return syscall(SYS_getenvid, 0, 0, 0, 0, 0, 0);
 }
 
+uint32_t
+sys_gettick(void)
+{
+	 return syscall(SYS_gettick, 0, 0, 0, 0, 0, 0);
+}
 void
 sys_yield(void)
 {

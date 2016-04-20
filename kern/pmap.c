@@ -248,6 +248,9 @@ mem_init(void)
 	size_t remap_size = (((uint64_t)1) << 32) - KERNBASE;
 	boot_map_region(kern_pgdir, KERNBASE, remap_size, 0, PTE_W);
 
+	// Map the video memory starting from 0xfc000000
+	// note that boot_map_region requires that size be page_aligned!!!
+	boot_map_region(kern_pgdir, VMEM, ROUNDUP(800 * 600 * 3, PGSIZE), VMEM, PTE_W | PTE_U);
 	// Initialize the SMP-related parts of the memory map
 	mem_init_mp();
 

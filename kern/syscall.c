@@ -36,6 +36,12 @@ sys_cgetc(void)
 	return cons_getc();
 }
 
+static uint32_t sys_gettick(void)
+{
+	extern uint32_t trap_tick;
+	return trap_tick;	
+}
+
 // Returns the current environment's envid.
 static envid_t
 sys_getenvid(void)
@@ -467,6 +473,8 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 		case SYS_env_destroy:
 			return sys_env_destroy(a1);
 			break;
+		case SYS_gettick:
+			return sys_gettick();
 		case SYS_yield:
 			sys_yield();
 			return 0;

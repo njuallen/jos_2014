@@ -15,6 +15,17 @@ start:
   cli                         # Disable interrupts
   cld                         # String operations increment
 
+  movw	$0x7a00,%di
+  movw    $0x4F01,%ax
+  movw    $0x0115,%cx
+  int     $0x10
+
+# turn on true color mode, 800 * 600 resolution
+# using LFB
+  movw    $0x4f02, %ax
+  movw    $0x4115, %bx
+  int     $0x10
+
   # Set up the important data segment registers (DS, ES, SS).
   xorw    %ax,%ax             # Segment number zero
   movw    %ax,%ds             # -> Data Segment
