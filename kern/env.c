@@ -468,6 +468,7 @@ env_free(struct Env *e)
 	pte_t *pt;
 	uint32_t pdeno, pteno;
 	physaddr_t pa;
+	
 
 	// If freeing the current environment, switch to kern_pgdir
 	// before freeing the page directory, just in case the page
@@ -475,6 +476,22 @@ env_free(struct Env *e)
 	if (e == curenv)
 		lcr3(PADDR(kern_pgdir));
 
+	// free the page directory
+	pa = PADDR(e->env_pgdir);
+	struct PageInfo *pp = pa2page(pa);
+	
+	// if another environment is using this address space
+	// do not free it
+	if(pp->pp_ref > 1) {
+		e->env_pgdir = 0;
+		page_decref(pp);
+		// return the environment to the free list
+		e->env_status = ENV_FREE;
+		e->env_link = env_free_list;
+		env_free_list = e;
+		return;
+	}
+	
 	// Note the environment's demise.
 	cprintf("[%08x] free env %08x\n", curenv ? curenv->env_id : 0, e->env_id);
 
@@ -603,3 +620,58 @@ env_run(struct Env *e)
 	panic("env_run not yet implemented");
 }
 
+//
+// share address space between environments
+// specially prepared for vfork
+// after this, dstenv will have share the same address space with srcenv
+// dstenv and srcenv must be valid environments
+// and do not use this to modify current env
+//
+int
+env_share_address_space(struct Env *dstenv, struct Env *srcenv)
+{
+
+	pte_t *pt;
+	uint32_t pdeno, pteno;
+	physaddr_t pa;
+
+	// do not modify the current environment
+	if(dstenv == curenv)
+		return -E_INVAL;
+
+	// first, we need to free dstenv's page directory
+	pa = PADDR(dstenv->env_pgdir);
+	dstenv->env_pgdir = 0;
+	page_decref(pa2page(pa));
+
+	/*
+	// secondly, we need to increase the reference count for each page of srcenv
+	// so that, even if dstenv is destroyed, srvenv's page will not be freed
+
+	for (pdeno = 0; pdeno < PDX(UTOP); pdeno++) {
+
+		// only look at mapped page tables
+		if (!(srcenv->env_pgdir[pdeno] & PTE_P))
+			continue;
+
+		// find the pa and va of the page table
+		pa = PTE_ADDR(srcenv->env_pgdir[pdeno]);
+		pt = (pte_t*) KADDR(pa);
+
+		for (pteno = 0; pteno <= PTX(~0); pteno++)
+			if (pt[pteno] & PTE_P) {
+				physaddr_t page_addr = PTE_ADDR(pt[pteno]);
+				page_incref(pa2page(page_addr));
+			}
+		// increase the page table reference count
+		page_incref(pa2page(pa));
+
+	}
+	*/
+	// increase srcenv's page directory's reference count
+	pa = PADDR(srcenv->env_pgdir);
+	page_incref(pa2page(pa));
+
+	dstenv->env_pgdir = srcenv->env_pgdir;
+	return 0;
+}

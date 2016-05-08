@@ -16,6 +16,10 @@ LIB_SRCFILES :=		$(LIB_SRCFILES) \
 			lib/fork.c \
 			lib/ipc.c
 
+# jthread source files
+LIB_SRCFILES +=		lib/thread.c \
+					lib/lock.c
+
 
 
 LIB_OBJFILES := $(patsubst lib/%.c, $(OBJDIR)/lib/%.o, $(LIB_SRCFILES))

@@ -78,7 +78,11 @@ KERN_BINFILES +=	user/idle \
 			user/primes
 # My gobang game
 KERN_BINFILES +=	user/gobang \
-					user/sleep
+					user/sleep  \
+
+# for testing Jthread
+KERN_BINFILES +=	user/vfork  \
+					user/thread
 
 KERN_OBJFILES := $(patsubst %.c, $(OBJDIR)/%.o, $(KERN_SRCFILES))
 KERN_OBJFILES := $(patsubst %.S, $(OBJDIR)/%.o, $(KERN_OBJFILES))

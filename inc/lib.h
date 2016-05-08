@@ -69,6 +69,19 @@ sys_exofork(void)
 	return ret;
 }
 
+// This must be inlined.  Exercise for reader: why?
+static __inline envid_t __attribute__((always_inline))
+sys_exovfork(uint32_t stack_top)
+{
+	envid_t ret;
+	__asm __volatile("int %2"
+		: "=a" (ret)
+		: "a" (SYS_exovfork),
+		  "i" (T_SYSCALL),
+		  "d" (stack_top)
+	);
+	return ret;
+}
 // ipc.c
 void	ipc_send(envid_t to_env, uint32_t value, void *pg, int perm);
 int32_t ipc_recv(envid_t *from_env_store, void *pg, int *perm_store);
@@ -79,7 +92,20 @@ envid_t	ipc_find_env(enum EnvType type);
 envid_t	fork(void);
 envid_t	sfork(void);	// Challenge!
 
+// thread.c
+typedef envid_t jthread_t;
+void jthread_lib_init_thread_pool();
+jthread_t jthread_create(void (*func)(void *), void *arg);
+void jthread_yield();
+void jthread_exit();
 
+// lock.c
+struct jthread_spinlock_t {
+	uint32_t val;
+};
+void jthread_spinlock_init(struct jthread_spinlock_t *lock, uint32_t value);
+void jthread_spinlock_lock(struct jthread_spinlock_t *lock);
+void jthread_spinlock_unlock(struct jthread_spinlock_t *lock);
 
 /* File open modes */
 #define	O_RDONLY	0x0000		/* open for reading only */

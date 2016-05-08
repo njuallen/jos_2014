@@ -21,10 +21,10 @@ libmain(int argc, char **argv)
 	if (argc > 0)
 		binaryname = argv[0];
 
+	jthread_lib_init_thread_pool();
 	// call user main routine
 	umain(argc, argv);
 
 	// exit gracefully
 	exit();
 }
-

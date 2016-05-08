@@ -97,7 +97,7 @@ sys_exofork(void)
 	// Create the new environment with env_alloc(), from kern/env.c.
 	// It should be left as env_alloc created it, except that
 	// status is set to ENV_NOT_RUNNABLE, and the register set is copied
-	// from the current environment -- but tweaked so sys_exofork
+	// from the currentenvironment -- but tweaked so sys_exofork
 	// will appear to return 0.
 
 	// LAB 4: Your code here.
@@ -113,6 +113,66 @@ sys_exofork(void)
 	panic("sys_exofork not implemented");
 }
 
+// Allocate a new environment.
+// Returns envid of new environment, or < 0 on error.  Errors are:
+//	-E_NO_FREE_ENV if no free environment is available.
+//	-E_NO_MEM on memory exhaustion.
+static envid_t
+sys_exovfork(uint32_t stack_top)
+{
+	// Create the new environment with env_alloc(), from kern/env.c.
+	// It should be left as env_alloc created it, except that
+	// status is set to ENV_NOT_RUNNABLE, and the register set is copied
+	// from the current environment -- but tweaked so sys_exofork
+	// will appear to return 0.
+
+	// LAB 4: Your code here.
+	struct Env *newenv;
+	int ret = env_alloc(&newenv, curenv->env_id);
+	if(ret == 0) {
+		newenv->env_status = ENV_NOT_RUNNABLE;
+		memcpy(&newenv->env_tf, &curenv->env_tf, sizeof(struct Trapframe));
+		newenv->env_tf.tf_regs.reg_eax = 0;
+		// the new environment will share the same address space with the parent
+		ret = env_share_address_space(newenv, curenv);
+		if(ret != 0)
+			goto error;
+
+		// stack_top must be below USTACKTOP and must be page aligned
+		if(stack_top >= USTACKTOP || stack_top < PGSIZE
+				|| (stack_top % PGSIZE) != 0) {
+			ret = -E_INVAL;
+			goto error;
+		}
+
+		// allocate a stack for the new environment
+		struct PageInfo *p;
+		// do not zero the page
+		p = page_alloc(0);
+		if(p == NULL) {
+			ret = -E_NO_MEM;
+			goto error;
+		}
+
+		int ret = page_insert(newenv->env_pgdir, p, 
+				(void *)stack_top - PGSIZE, PTE_U | PTE_W);
+		if(ret != 0)
+			goto error;
+
+		// switch to the stack
+		// put the esp a little bit below the stack_top
+		// since after returning from the sys_exovfork syscall
+		// it may shrink the stack a little bit
+		// leave space for the shrink
+		newenv->env_tf.tf_esp = stack_top - 0x60;
+		return newenv->env_id;
+error:
+		env_destroy(newenv);
+		return ret;
+	}
+	return ret;
+	panic("sys_exofork not implemented");
+}
 // Set envid's env_status to status, which must be ENV_RUNNABLE
 // or ENV_NOT_RUNNABLE.
 //
@@ -495,6 +555,9 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 			break;
 		case SYS_exofork:
 			return sys_exofork();
+			break;
+		case SYS_exovfork:
+			return sys_exovfork(a1);
 			break;
 		case SYS_page_alloc:
 			return sys_page_alloc(a1, (void *)a2, a3);

@@ -17,6 +17,8 @@ void	env_free(struct Env *e);
 void	env_create(uint8_t *binary, enum EnvType type);
 void	env_destroy(struct Env *e);	// Does not return if e == curenv
 
+int
+env_share_address_space(struct Env *dstenv, struct Env *srcenv);
 int	envid2env(envid_t envid, struct Env **env_store, bool checkperm);
 int	env2envid(struct Env *env);
 // The following two functions do not return
