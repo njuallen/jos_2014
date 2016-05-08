@@ -18,7 +18,7 @@ LIB_SRCFILES :=		$(LIB_SRCFILES) \
 
 # jthread source files
 LIB_SRCFILES +=		lib/thread.c \
-					lib/lock.c
+					lib/lock.c   \
 
 
 

@@ -107,6 +107,18 @@ void jthread_spinlock_init(struct jthread_spinlock_t *lock, uint32_t value);
 void jthread_spinlock_lock(struct jthread_spinlock_t *lock);
 void jthread_spinlock_unlock(struct jthread_spinlock_t *lock);
 
+// sema.c
+// user should only see this
+struct jthread_sema_t {
+	// the id of the sema
+	unsigned int sema_id;
+};
+
+void jthread_lib_init_sema_pool();
+int jthread_sema_init(struct jthread_sema_t *m, int val);
+void jthread_sema_post(struct jthread_sema_t *m);
+void jthread_sema_wait(struct jthread_sema_t *m);
+
 /* File open modes */
 #define	O_RDONLY	0x0000		/* open for reading only */
 #define	O_WRONLY	0x0001		/* open for writing only */

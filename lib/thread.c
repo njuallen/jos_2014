@@ -19,7 +19,7 @@ struct jthread_thread_info_t {
 
 static struct jthread_thread_info_t thread_pool[MAX_THREADS];
 
-static int head;
+static int thread_head;
 
 // the destination code for the newly created thread
 static void (*dst_code)(void *);
@@ -27,7 +27,7 @@ static void (*dst_code)(void *);
 static void *args;
 
 // the big thread pool lock;
-static struct jthread_spinlock_t lock;
+static struct jthread_spinlock_t thread_pool_lock;
 
 // initialize all the data structures
 void jthread_lib_init_thread_pool() {
@@ -50,10 +50,10 @@ void jthread_lib_init_thread_pool() {
 	thread_pool[MAX_THREADS - 1].next = -1;
 
 	// initialize the free blocked thread list
-	head = 0;
+	thread_head = 0;
 
 	// initialize the big lock
-	jthread_spinlock_init(&lock, 0);
+	jthread_spinlock_init(&thread_pool_lock, 0);
 };
 
 
@@ -63,12 +63,12 @@ jthread_t
 jthread_create(void (*func)(void *), void *arg)
 {
 	// the big thread pool lock
-	jthread_spinlock_lock(&lock);
+	jthread_spinlock_lock(&thread_pool_lock);
 
 	int slot = -1;
-	if(head != -1) {
-		slot = head;
-		head = thread_pool[head].next;
+	if(thread_head != -1) {
+		slot = thread_head;
+		thread_head = thread_pool[thread_head].next;
 		thread_pool[slot].in_use = true;
 		thread_pool[slot].next = -1;
 	}
@@ -116,7 +116,7 @@ jthread_create(void (*func)(void *), void *arg)
 // only then we can safely unlock the lock
 static void __attribute__ ((noinline))thread_entry(void (*func)(void *), void *args) {
 	// unlock the lock
-	jthread_spinlock_unlock(&lock);
+	jthread_spinlock_unlock(&thread_pool_lock);
 	func(args);
 	// thread exited, free it
 	jthread_exit();
@@ -134,17 +134,17 @@ static int find_slot(void);
 // since I do not how to do it
 void jthread_exit() {
 	// acquire the lock
-	jthread_spinlock_lock(&lock);
+	jthread_spinlock_lock(&thread_pool_lock);
 	// return the slot back to the pool
 	int slot = find_slot();
-	thread_pool[slot].next = head;
+	thread_pool[slot].next = thread_head;
 	thread_pool[slot].in_use = false;
 	thread_pool[slot].tid = -1;
 	
-	head = slot;
+	thread_head = slot;
 
 	// release the lock
-	jthread_spinlock_unlock(&lock);
+	jthread_spinlock_unlock(&thread_pool_lock);
 
 	exit();
 
@@ -163,6 +163,140 @@ static int find_slot(void) {
 	if(esp >= USTACKTOP)
 		return -1;
 	int index = (USTACKTOP - esp) / (2 * PGSIZE) - 1;
-	cprintf("index: %d\n", index);
 	return index;
 }
+
+// a user space semaphore
+
+#define MAX_SEMA 1000
+
+struct jthread_sema_info_t {
+	// the lock is used to protect val
+	struct jthread_spinlock_t lock;
+	// the value of the sema
+	unsigned int val;
+	// the index of the blocked thread in the thread pool
+	int blocked_thread;
+	// free items is orgnized as a singly linked list
+	int next;
+};
+
+static int sema_head;
+
+// lock used to protect sema_head
+static struct jthread_spinlock_t sema_pool_lock;
+
+static struct jthread_sema_info_t sema_pool[MAX_SEMA];
+
+// initialize the semaphore pool
+void jthread_lib_init_sema_pool() {
+	int i;
+
+	for(i = 0; i < MAX_SEMA; i++) {
+		sema_pool[i].val = 0;
+		sema_pool[i].blocked_thread = -1;
+		sema_pool[i].next = i + 1;
+	}
+	// terminating the free list
+	sema_pool[MAX_SEMA - 1].next = -1;
+
+	// initialize the free list sema_head
+	sema_head = 0;
+
+	// initialize the sema pool lock
+	jthread_spinlock_init(&sema_pool_lock, 0);
+};
+
+int jthread_sema_init(struct jthread_sema_t *m, int val) {
+	int slot = -1;
+	jthread_spinlock_lock(&sema_pool_lock);
+	// no more free slot
+	// simply panic
+	if(sema_head == -1)
+		panic("jthread_sema_init: no semaphore available\n");
+	else {
+		slot = sema_head;
+		sema_head = sema_pool[sema_head].next;
+	}
+	jthread_spinlock_unlock(&sema_pool_lock);
+	m->sema_id = slot;
+	sema_pool[slot].val = val;
+	sema_pool[slot].next = -1;
+	sema_pool[slot].blocked_thread = -1;
+	jthread_spinlock_init(&sema_pool[slot].lock, 0);
+	return 0;
+};
+
+// v
+void jthread_sema_post(struct jthread_sema_t *m) {
+	int slot = m->sema_id;
+
+	// acquire exclusive access to the semaphore
+	jthread_spinlock_lock(&sema_pool[slot].lock);
+
+	int thread = sema_pool[slot].blocked_thread;
+	
+	// someone is blocked, so we need to wake it up
+	if(thread != -1) {
+		// now we need to modify the thread_pool
+		jthread_spinlock_lock(&thread_pool_lock);
+		
+		// remove this one out of the sleeping queue
+		sema_pool[slot].blocked_thread = thread_pool[thread].next;
+		thread_pool[thread].next = -1;
+		envid_t envid = thread_pool[thread].tid;
+		jthread_spinlock_unlock(&thread_pool_lock);
+		jthread_spinlock_unlock(&sema_pool[slot].lock);
+
+		// try wake it up
+		// you must send a nonzero value
+		// since in ipc_recv we use 0 to indicate error
+		ipc_send(envid, 1, NULL, 0);
+	}
+	// no one is blocked, we simply imcrement val
+	else {
+		sema_pool[slot].val++;
+		jthread_spinlock_unlock(&sema_pool[slot].lock);
+	}
+};
+
+int jthread_sema_trylock(struct jthread_sema_t *m) {
+	return 0;
+};
+
+// P
+void jthread_sema_wait(struct jthread_sema_t *m) {
+	int slot = m->sema_id;
+	// acquire exclusive access to the semaphore
+	jthread_spinlock_lock(&sema_pool[slot].lock);
+
+	// do not need to be blocked
+	if(sema_pool[slot].val > 0) {
+		sema_pool[slot].val--;
+		jthread_spinlock_unlock(&sema_pool[slot].lock);
+	}
+	else {
+		// add ourself to the blocked queue
+		
+		// which slot in thread_pool does current thread reside?
+		int curr = find_slot(); 
+		// now we need to modify the thread_pool
+		jthread_spinlock_lock(&thread_pool_lock);
+		thread_pool[curr].next = sema_pool[slot].blocked_thread;
+		sema_pool[slot].blocked_thread = curr;
+
+		jthread_spinlock_unlock(&thread_pool_lock);
+		jthread_spinlock_unlock(&sema_pool[slot].lock);
+
+		// use this to block ourselves
+		// well, we can not use the while loop below to implement this
+		// since ipc_recv uses the global variable thisenv to get the transmitted value
+		// but the thisenv problem remains unsolved
+		// so in most cases it will return 0
+		// so we can not use 0 to distinguish error between transmitted value
+		// so just assume that ipc_recv will never error!
+		//while(ipc_recv(NULL, NULL, NULL) == 0)
+			//jthread_yield();
+		ipc_recv(NULL, NULL, NULL);
+	};
+};

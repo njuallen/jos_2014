@@ -22,6 +22,7 @@ libmain(int argc, char **argv)
 		binaryname = argv[0];
 
 	jthread_lib_init_thread_pool();
+	jthread_lib_init_sema_pool();
 	// call user main routine
 	umain(argc, argv);
 
