@@ -6,6 +6,7 @@
 #include <inc/assert.h>
 
 #include <kern/env.h>
+#include <kern/sem.h>
 #include <kern/pmap.h>
 #include <kern/trap.h>
 #include <kern/syscall.h>
@@ -200,6 +201,26 @@ sys_env_set_status(envid_t envid, int status)
 		env->env_status = status;
 	return ret;
 	panic("sys_env_set_status not implemented");
+}
+
+static int
+sys_sem_open(int val) {
+	return sem_open(val);
+}
+
+static int
+sys_sem_close(int sem_id) {
+	return sem_close(sem_id);
+}
+
+static int
+sys_sem_post(int sem_id) {
+	return sem_post(sem_id);
+}
+
+static int
+sys_sem_wait(int sem_id) {
+	return sem_wait(sem_id);
 }
 
 // Set the page fault upcall for 'envid' by modifying the corresponding struct
@@ -574,6 +595,18 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 		case SYS_env_set_pgfault_upcall:
 			return sys_env_set_pgfault_upcall(a1, (void *)a2);
 			break;	
+		case SYS_sem_open:
+			return sys_sem_open(a1);
+			break;
+		case SYS_sem_close:
+			return sys_sem_close(a1);
+			break;
+		case SYS_sem_post:
+			return sys_sem_post(a1);
+			break;
+		case SYS_sem_wait:
+			return sys_sem_wait(a1);
+			break;
 		case SYS_ipc_recv:
 			return sys_ipc_recv((void *)a1);
 			break;

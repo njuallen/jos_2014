@@ -20,6 +20,7 @@ KERN_SRCFILES :=	kern/entry.S \
 			kern/monitor.c \
 			kern/pmap.c \
 			kern/env.c \
+			kern/sem.c \
 			kern/kclock.c \
 			kern/picirq.c \
 			kern/printf.c \
@@ -83,7 +84,8 @@ KERN_BINFILES +=	user/gobang \
 # for testing Jthread
 KERN_BINFILES +=	user/vfork  \
 					user/thread \
-					user/sema
+					user/sema   \
+					user/syssem
 
 KERN_OBJFILES := $(patsubst %.c, $(OBJDIR)/%.o, $(KERN_SRCFILES))
 KERN_OBJFILES := $(patsubst %.S, $(OBJDIR)/%.o, $(KERN_OBJFILES))

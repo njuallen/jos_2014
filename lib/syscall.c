@@ -31,6 +31,10 @@ syscall(int num, int check, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 		  "S" (a5)
 		: "cc", "memory");
 
+	// negative indicates error in which case user should be notified
+	// but if a positive value is returned, it may be a bug
+	// for those syscalls that may return a positive on success
+	// do not turn on check
 	if(check && ret > 0)
 		panic("syscall %d returned %d (> 0)", num, ret);
 
@@ -123,3 +127,24 @@ sys_ipc_recv(void *dstva)
 	return syscall(SYS_ipc_recv, 1, (uint32_t)dstva, 0, 0, 0, 0);
 }
 
+// it returns a non-negative sem_id on success
+// so we should not turn on syscall check
+int sys_sem_open(int val)
+{
+	return syscall(SYS_sem_open, 0, val, 0, 0, 0, 0);
+}
+
+int sys_sem_close(int sem_id)
+{
+	return syscall(SYS_sem_close, 1, sem_id, 0, 0, 0, 0);
+}
+
+int sys_sem_post(int sem_id)
+{
+	return syscall(SYS_sem_post, 1, sem_id, 0, 0, 0, 0);
+}
+
+int sys_sem_wait(int sem_id)
+{
+	return syscall(SYS_sem_wait, 1, sem_id, 0, 0, 0, 0);
+}

@@ -9,6 +9,7 @@
 #include <kern/pmap.h>
 #include <kern/kclock.h>
 #include <kern/env.h>
+#include <kern/sem.h>
 #include <kern/trap.h>
 #include <kern/sched.h>
 #include <kern/picirq.h>
@@ -96,6 +97,8 @@ i386_init(void)
 
 	// Lab 3 user environment initialization functions
 	env_init();
+	// initialize semaphores
+	sem_init();
 	trap_init();
 
 	// Lab 4 multiprocessor initialization functions

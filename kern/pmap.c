@@ -9,6 +9,7 @@
 #include <kern/pmap.h>
 #include <kern/kclock.h>
 #include <kern/env.h>
+#include <kern/sem.h>
 #include <kern/cpu.h>
 
 // These variables are set by i386_detect_memory()
@@ -173,6 +174,9 @@ mem_init(void)
 	// LAB 3: Your code here.
 	envs = (struct Env *)boot_alloc(NENV * sizeof(struct Env));
 	memset(envs, 0, NENV * sizeof(struct Env));
+
+	sems = (struct Sem *)boot_alloc(NSEM * sizeof(struct Sem));
+	memset(sems, 0, NSEM * sizeof(struct Sem));
 
 	//////////////////////////////////////////////////////////////////////
 	// Now that we've allocated the initial kernel data structures, we set
