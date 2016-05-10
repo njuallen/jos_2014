@@ -69,7 +69,9 @@ void producer(void *arg) {
 	while(1) {
 		sys_sem_wait(sem_empty);
 		cprintf("produce\n");
+		sys_sem_wait(sem_mutex);
 		insert(-id);
+		sys_sem_post(sem_mutex);
 		cprintf("producer %d produced product %d\n", id, -id);
 		sys_sem_post(sem_full);
 	}
@@ -80,7 +82,9 @@ void consumer(void *arg) {
 	while(1) {
 		sys_sem_wait(sem_full);
 		cprintf("consume\n");
+		sys_sem_wait(sem_mutex);
 		int product = remove();
+		sys_sem_post(sem_mutex);
 		cprintf("consumer %d consumed product %d\n", id, product);
 		sys_sem_post(sem_empty);
 	}
