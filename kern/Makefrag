@@ -85,7 +85,9 @@ KERN_BINFILES +=	user/gobang \
 KERN_BINFILES +=	user/vfork  \
 					user/thread \
 					user/sema   \
-					user/syssem
+					user/syssem \
+					user/ppc    \
+					user/tpc
 
 KERN_OBJFILES := $(patsubst %.c, $(OBJDIR)/%.o, $(KERN_SRCFILES))
 KERN_OBJFILES := $(patsubst %.S, $(OBJDIR)/%.o, $(KERN_OBJFILES))
