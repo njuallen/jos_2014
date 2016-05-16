@@ -49,8 +49,49 @@
  */
 
 
+// traps with no error code
+TRAPHANDLER_NOEC(vec0, T_DIVIDE)
+TRAPHANDLER_NOEC(vec1, T_DEBUG)
+TRAPHANDLER_NOEC(vec2, T_NMI)
+TRAPHANDLER_NOEC(vec3, T_BRKPT)
+TRAPHANDLER_NOEC(vec4, T_OFLOW)
+TRAPHANDLER_NOEC(vec5, T_BOUND)
+TRAPHANDLER_NOEC(vec6, T_ILLOP)
+TRAPHANDLER_NOEC(vec7, T_DEVICE)
+
+// traps with error code
+TRAPHANDLER(vec8, T_DBLFLT)
+// exception 9 is not generated recent processors
+TRAPHANDLER(vec10, T_TSS)
+TRAPHANDLER(vec11, T_SEGNP)
+TRAPHANDLER(vec12, T_STACK)
+TRAPHANDLER(vec13, T_GPFLT)
+TRAPHANDLER(vec14, T_PGFLT)
+
+
+TRAPHANDLER_NOEC(irq0, IRQ_OFFSET + IRQ_TIMER)
+TRAPHANDLER_NOEC(irq1, IRQ_OFFSET + IRQ_KBD)
+TRAPHANDLER_NOEC(irq4, IRQ_OFFSET + IRQ_SERIAL)
+TRAPHANDLER_NOEC(irq14, IRQ_OFFSET + IRQ_IDE)
+TRAPHANDLER_NOEC(irq_spurious, IRQ_OFFSET + IRQ_SPURIOUS)
+TRAPHANDLER_NOEC(irq_error, IRQ_OFFSET + IRQ_ERROR)
+
+// system call
+TRAPHANDLER_NOEC(vecsys, T_SYSCALL)
+
+.global _alltraps
+.extern trap
+
 
 /*
  * Lab 3: Your code here for _alltraps
  */
-
+_alltraps:
+pushl %ds
+pushl %es
+pushal
+pushl %esp      # the argument(TrapFrame *tf) to irq_handle
+movw  $GD_KD, %ax
+movw  %ax, %ds
+movw  %ax, %es
+call trap

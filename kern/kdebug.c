@@ -56,9 +56,9 @@ struct UserStabData {
 //		stab_binsearch(stabs, &left, &right, N_SO, 0xf0100184);
 //	will exit setting left = 118, right = 554.
 //
-static void
+	static void
 stab_binsearch(const struct Stab *stabs, int *region_left, int *region_right,
-	       int type, uintptr_t addr)
+		int type, uintptr_t addr)
 {
 	int l = *region_left, r = *region_right, any_matches = 0;
 
@@ -66,6 +66,10 @@ stab_binsearch(const struct Stab *stabs, int *region_left, int *region_right,
 		int true_m = (l + r) / 2, m = true_m;
 
 		// search for earliest stab with right type
+		// 注释中称其为earliest似乎容易引起误解，
+		// 我们要做的就是在左边一半中从右往左找到第一个类型正确的
+		// 如果这一个地址比addr大，那我们就只要在左边一半中搜索
+		// 如果比addr小，则我们只要在右边一半中搜索
 		while (m >= l && stabs[m].n_type != type)
 			m--;
 		if (m < l) {	// no match in [l, m]
@@ -95,8 +99,8 @@ stab_binsearch(const struct Stab *stabs, int *region_left, int *region_right,
 	else {
 		// find rightmost region containing 'addr'
 		for (l = *region_right;
-		     l > *region_left && stabs[l].n_type != type;
-		     l--)
+				l > *region_left && stabs[l].n_type != type;
+				l--)
 			/* do nothing */;
 		*region_left = l;
 	}
@@ -110,11 +114,12 @@ stab_binsearch(const struct Stab *stabs, int *region_left, int *region_right,
 //	negative if not.  But even if it returns negative it has stored some
 //	information into '*info'.
 //
-int
+	int
 debuginfo_eip(uintptr_t addr, struct Eipdebuginfo *info)
 {
 	const struct Stab *stabs, *stab_end;
 	const char *stabstr, *stabstr_end;
+	// l: left	r: right
 	int lfile, rfile, lfun, rfun, lline, rline;
 
 	// Initialize *info
@@ -139,9 +144,14 @@ debuginfo_eip(uintptr_t addr, struct Eipdebuginfo *info)
 		// USTABDATA.
 		const struct UserStabData *usd = (const struct UserStabData *) USTABDATA;
 
+		//extern struct Env *curenv;
+
 		// Make sure this memory is valid.
 		// Return -1 if it is not.  Hint: Call user_mem_check.
 		// LAB 3: Your code here.
+
+		if(user_mem_check(curenv, usd, sizeof(*usd), PTE_U) < 0)
+			return -1;
 
 		stabs = usd->stabs;
 		stab_end = usd->stab_end;
@@ -150,6 +160,10 @@ debuginfo_eip(uintptr_t addr, struct Eipdebuginfo *info)
 
 		// Make sure the STABS and string table memory is valid.
 		// LAB 3: Your code here.
+		if(user_mem_check(curenv, stabs, stab_end - stabs, PTE_U) < 0)
+			return -1;
+		if(user_mem_check(curenv, stabstr, stabstr_end - stabstr_end, PTE_U) < 0)
+			return -1;
 	}
 
 	// String table validity checks
@@ -205,15 +219,18 @@ debuginfo_eip(uintptr_t addr, struct Eipdebuginfo *info)
 	//	which one.
 	// Your code here.
 
-
+	stab_binsearch(stabs, &lline, &rline, N_SLINE, addr);
+	if (lline <= rline)
+		info->eip_line = stabs[lline].n_value;
+	
 	// Search backwards from the line number for the relevant filename
 	// stab.
 	// We can't just use the "lfile" stab because inlined functions
 	// can interpolate code from a different file!
 	// Such included source files use the N_SOL stab type.
 	while (lline >= lfile
-	       && stabs[lline].n_type != N_SOL
-	       && (stabs[lline].n_type != N_SO || !stabs[lline].n_value))
+			&& stabs[lline].n_type != N_SOL
+			&& (stabs[lline].n_type != N_SO || !stabs[lline].n_value))
 		lline--;
 	if (lline >= lfile && stabs[lline].n_strx < stabstr_end - stabstr)
 		info->eip_file = stabstr + stabs[lline].n_strx;
@@ -223,8 +240,8 @@ debuginfo_eip(uintptr_t addr, struct Eipdebuginfo *info)
 	// or 0 if there was no containing function.
 	if (lfun < rfun)
 		for (lline = lfun + 1;
-		     lline < rfun && stabs[lline].n_type == N_PSYM;
-		     lline++)
+				lline < rfun && stabs[lline].n_type == N_PSYM;
+				lline++)
 			info->eip_fn_narg++;
 
 	return 0;

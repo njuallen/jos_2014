@@ -25,6 +25,8 @@ struct Command {
 static struct Command commands[] = {
 	{ "help", "Display this list of commands", mon_help },
 	{ "kerninfo", "Display information about the kernel", mon_kerninfo },
+	{ "backtrace", "Backtracing the stack", mon_backtrace },
+	{ "showmapping", "Show the memory mapping of a virtual memory address", mon_showmapping },
 };
 #define NCOMMANDS (sizeof(commands)/sizeof(commands[0]))
 
@@ -56,10 +58,93 @@ mon_kerninfo(int argc, char **argv, struct Trapframe *tf)
 	return 0;
 }
 
+static int get_hex(const char *str, uint32_t *dst) {
+	while(*str && *str != 'x')
+		str++;
+	str++;
+	if(*str == 0)
+		return -1;
+	*dst = 0;
+	while(*str) {
+		if (*str >= '0' && *str <= '9')
+			*dst = *dst * 16 + *str - '0';
+		else if(*str >= 'a' && *str <= 'f')
+			*dst = *dst * 16 + *str - 'a' + 10;
+		else
+			return -1;
+		*str++;
+	}
+	return 0;
+}
+
+int
+mon_showmapping(int argc, char **argv, struct Trapframe *tf)
+{
+	if (argc < 2)
+		cprintf("showmapping: expect virtual memory addresses in hexadicimal representation\n");
+	else {
+		int i;
+		cprintf("%3s%-10s%-10s%-10s%-10s\n", " ", "va", "pde", "pte", "perm");
+		for(i = 1; i < argc; i++) {
+			uintptr_t va;
+			int ret = get_hex(argv[i], &va);
+			if(ret < 0) {
+				cprintf("%s is not a legal hex number\n", argv[i]);
+				return 0;
+			}
+			extern pde_t *kern_pgdir;
+			pde_t pde = kern_pgdir[PDX(va)]; 
+			if (pde & PTE_P) {
+				pde &= 0xfffff000;
+				pde_t pde_tmp = pde + KERNBASE;
+				pte_t pte = *((pte_t *)pde_tmp + PTX(va));
+				if(pte & PTE_P) {
+					uint32_t perm = pte & 0xfff;
+					pte &= 0xfffff000;
+					cprintf("%3s%8x %8x %8x %8x\n", " ", va, pde, pte, perm);
+				}
+				else {
+					cprintf("page does not exist");
+				}
+			}
+			else {
+				cprintf("%3s%-10x page table does not exist\n", " ", va);
+			}
+		}
+	}
+	return 0;
+}
+
 int
 mon_backtrace(int argc, char **argv, struct Trapframe *tf)
 {
-	// Your code here.
+	// output format
+	// Stack backtrace:
+	// ebp f0109e58  eip f0100a62  args 00000001 f0109e80 f0109e98 f0100ed2 00000031
+	// kern/monitor.c:143: monitor+106
+	cprintf("Stack backtrace\n");
+	unsigned int ebp = read_ebp();
+	while(ebp != 0) {
+		cprintf("ebp %08x ", ebp);
+		cprintf("eip %08x ", *(unsigned int *)(ebp + 4));
+		unsigned int eip = *(unsigned int *)(ebp + 4);
+		cprintf("args ");
+		int i;
+		for(i = 0; i < 5; i++)
+			cprintf("%08x ", *(unsigned int *)(ebp + 8 + 4 * i));
+		cprintf("\n");
+		struct Eipdebuginfo info;
+		if(debuginfo_eip(eip, &info) == 0) {
+			cprintf("%s:%d: %.*s+%d\n", 
+					info.eip_file, info.eip_line, 
+					info.eip_fn_namelen, info.eip_fn_name
+					, info.eip_line);
+		}
+		cprintf("\n");
+
+		// update ebp
+		ebp = *(unsigned int *)ebp;
+	}
 	return 0;
 }
 
