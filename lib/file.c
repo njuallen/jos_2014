@@ -141,7 +141,30 @@ devfile_write(struct Fd *fd, const void *buf, size_t n)
 	// remember that write is always allowed to write *fewer*
 	// bytes than requested.
 	// LAB 5: Your code here
-	panic("devfile_write not implemented");
+	int r;
+
+	// we need to manually split and send it
+	// the size of the write buf
+	size_t bufsize = MIN(n, sizeof(fsipcbuf.write.req_buf));
+	// total number of bytes transferred
+	size_t count;
+
+	for(count = 0; count < n; count += r) {
+		// the number of bytes to transfer by this single write operation
+		size_t byte_count = MIN(bufsize, n - count);
+		fsipcbuf.write.req_fileid = fd->fd_file.id;
+		fsipcbuf.write.req_n = byte_count;
+		memmove(fsipcbuf.write.req_buf, (char *)buf + count, byte_count);
+		if ((r = fsipc(FSREQ_WRITE, NULL)) < 0)
+			return r;
+		// panic on any shortcount write
+		if(r != byte_count)
+			panic("devfile_write: shortcount write");
+		assert(r <= n);
+		assert(r <= PGSIZE);
+	}
+	// if we do not encounter an error, shortcount should not happen!
+	return count;
 }
 
 static int

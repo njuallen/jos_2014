@@ -110,6 +110,7 @@ union Fsipc {
 	} remove;
 
 	// Ensure Fsipc is one page
+	// great trick!
 	char _pad[PGSIZE];
 };
 

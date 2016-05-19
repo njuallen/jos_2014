@@ -74,3 +74,6 @@ JOS中，在kernel中，是关中断的。所以所有的IDT表项都必须设�
 ##lab5
 ###IOPL
 只有当CPL小于或等于IOPL时，程序才可以访问I/O address space。因此对于fs，其IOPL应该是3。
+
+###file_get_block
+为什么file_get_block只能返回-E_NO_DISK或者-E_INVAL？对于其他的错误，例如有file_block_walk返回的其他类型的错误，该如何处理？还是统一返回-E_INVAL？

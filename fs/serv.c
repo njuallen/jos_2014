@@ -17,10 +17,12 @@
 // 1. The on-disk 'struct File' is mapped into the part of memory
 //    that maps the disk.  This memory is kept private to the file
 //    server.
+//    // seems somewhat like the inode table
 // 2. Each open file has a 'struct Fd' as well, which sort of
 //    corresponds to a Unix file descriptor.  This 'struct Fd' is kept
 //    on *its own page* in memory, and it is shared with any
 //    environments that have the file open.
+//    // seems like the per process file table
 // 3. 'struct OpenFile' links these other two structures, and is kept
 //    private to the file server.  The server maintains an array of
 //    all open files, indexed by "file ID".  (There can be at most
@@ -28,6 +30,7 @@
 //    communicate with the server.  File IDs are a lot like
 //    environment IDs in the kernel.  Use openfile_lookup to translate
 //    file IDs to struct OpenFile.
+//    // seems like the open file table
 
 struct OpenFile {
 	uint32_t o_fileid;	// file id
@@ -38,6 +41,7 @@ struct OpenFile {
 
 // Max number of open files in the file system at once
 #define MAXOPEN		1024
+// where does this 0xD0000000 comes from?
 #define FILEVA		0xD0000000
 
 // initialize to force into data section
@@ -209,12 +213,25 @@ serve_read(envid_t envid, union Fsipc *ipc)
 {
 	struct Fsreq_read *req = &ipc->read;
 	struct Fsret_read *ret = &ipc->readRet;
+	// since ipc->readRet has only one page
+	// we panic on req_n that is larger than PGSIZE
+	if(req->req_n > PGSIZE)
+		panic("fs: environment %d requires more than 4096 bytes\n", envid);
 
 	if (debug)
 		cprintf("serve_read %08x %08x %08x\n", envid, req->req_fileid, req->req_n);
 
 	// Lab 5: Your code here:
-	return 0;
+	struct OpenFile *o;
+	int r;
+	// First, use openfile_lookup to find the relevant open file.
+	if ((r = openfile_lookup(envid, req->req_fileid, &o)) < 0)
+		return r;
+
+	// if read succeeds, we update the seek position
+	if((r = file_read(o->o_file, (void *)ret->ret_buf, req->req_n, o->o_fd->fd_offset)) >= 0)
+		o->o_fd->fd_offset += r;
+	return r;
 }
 
 
@@ -229,7 +246,24 @@ serve_write(envid_t envid, struct Fsreq_write *req)
 		cprintf("serve_write %08x %08x %08x\n", envid, req->req_fileid, req->req_n);
 
 	// LAB 5: Your code here.
-	panic("serve_write not implemented");
+	// we panic on req_n that is larger than the data buf for write
+	if(req->req_n > sizeof(req->req_buf))
+		panic("fs: environment %d wants to write more than what the buffer can hold\n", envid);
+
+	if (debug)
+		cprintf("serve_read %08x %08x %08x\n", envid, req->req_fileid, req->req_n);
+
+	// Lab 5: Your code here:
+	struct OpenFile *o;
+	int r;
+	// First, use openfile_lookup to find the relevant open file.
+	if ((r = openfile_lookup(envid, req->req_fileid, &o)) < 0)
+		return r;
+
+	// if read succeeds, we update the seek position
+	if((r = file_write(o->o_file, (void *)req->req_buf, req->req_n, o->o_fd->fd_offset)) >= 0)
+		o->o_fd->fd_offset += r;
+	return r;
 }
 
 // Stat ipc->stat.req_fileid.  Return the file's struct Stat to the
