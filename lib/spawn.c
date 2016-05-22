@@ -301,6 +301,15 @@ static int
 copy_shared_pages(envid_t child)
 {
 	// LAB 5: Your code here.
+	int r;
+	int pn;
+	for(pn = 0; pn < PGNUM(USTACKTOP); pn++)
+		// we call duppage only for pages that do exist
+		if((get_pte(pn) & PTE_P) && (get_pte(pn) & PTE_U) 
+				&& (get_pte(pn) & PTE_SHARE))
+			if((r = sys_page_map(sys_getenvid(), (void *)(pn * PGSIZE), 
+							child, (void *)(pn * PGSIZE), PTE_SHARE | PTE_SYSCALL)) < 0)
+				panic("sys_page_map: %e\n", r);
 	return 0;
 }
 

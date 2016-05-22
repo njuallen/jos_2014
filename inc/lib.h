@@ -80,6 +80,7 @@ envid_t	ipc_find_env(enum EnvType type);
 #define	PTE_SHARE	0x400
 envid_t	fork(void);
 envid_t	sfork(void);	// Challenge!
+pte_t get_pte(uint32_t pn);
 
 // fd.c
 int	close(int fd);

@@ -135,7 +135,32 @@ sys_env_set_trapframe(envid_t envid, struct Trapframe *tf)
 	// LAB 5: Your code here.
 	// Remember to check whether the user has supplied us with a good
 	// address!
-	panic("sys_env_set_trapframe not implemented");
+
+	// is tf a user space address ?
+	if((uint32_t)tf >= UTOP)
+		return -E_INVAL;
+
+	// is the page corresponding to tf mapped in curenv?
+	// get the physical page mapped at srcva
+	struct PageInfo *pp = page_lookup(curenv->env_pgdir, (void *)ROUNDDOWN((uint32_t)tf, PGSIZE), NULL);
+	if(pp == NULL)
+		return -E_INVAL;
+
+	// check envid
+	struct Env *env;
+	int ret = envid2env(envid, &env, 1);
+	if(ret < 0)
+		return ret;
+
+	// copy the trapframe
+	memcpy(&env->env_tf, tf, sizeof(struct Trapframe));
+
+	// modify env_tf's cpl and eflags
+	env->env_tf.tf_cs = GD_UT | 3;
+	// use |= instead of =
+	// since user may want to set eflags to some nonzero initial value
+	env->env_tf.tf_eflags |= FL_IF;
+	return 0;
 }
 
 // Set the page fault upcall for 'envid' by modifying the corresponding struct
@@ -500,6 +525,9 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 			break;
 		case SYS_env_set_pgfault_upcall:
 			return sys_env_set_pgfault_upcall(a1, (void *)a2);
+			break;	
+		case SYS_env_set_trapframe:
+			return sys_env_set_trapframe(a1, (void *)a2);
 			break;	
 		case SYS_ipc_recv:
 			return sys_ipc_recv((void *)a1);

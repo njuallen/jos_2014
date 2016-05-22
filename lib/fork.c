@@ -9,7 +9,6 @@
 
 	void
 print_trapframe(struct UTrapframe *utf);
-static inline pte_t get_pte(uint32_t pn);
 //
 // Custom page fault handler - if faulting page is copy-on-write,
 // map in our own private writable copy.
@@ -73,7 +72,13 @@ duppage(envid_t envid, unsigned pn)
 	int r;
 
 	// LAB 4: Your code here.
-	if(get_pte(pn) & PTE_W || get_pte(pn) & PTE_COW) {
+	// check for shared pages
+	if(get_pte(pn) & PTE_SHARE) {
+		if((r = sys_page_map(sys_getenvid(), (void *)(pn * PGSIZE), 
+						envid, (void *)(pn * PGSIZE), PTE_SHARE | PTE_SYSCALL)) < 0)
+			panic("sys_page_map: %e\n", r);
+	}
+	else if(get_pte(pn) & PTE_W || get_pte(pn) & PTE_COW) {
 		// if the page is writable or marked as copy on write
 		// for child
 		if((r = sys_page_map(sys_getenvid(), (void *)(pn * PGSIZE), 
@@ -87,8 +92,8 @@ duppage(envid_t envid, unsigned pn)
 		// for parent
 		// temporarily unmap the page
 		if((r = sys_page_unmap(sys_getenvid(), (void *)(pn * PGSIZE))) < 0)
-			panic("sys_page_unmap: %e\n", r);
-			*/
+		panic("sys_page_unmap: %e\n", r);
+		*/
 
 		// remap it with different perm
 		if((r = sys_page_map(envid, (void *)(pn * PGSIZE), 
@@ -105,11 +110,7 @@ duppage(envid_t envid, unsigned pn)
 	}
 	return 0;
 }
-
-
-//
-// User-level fork with copy-on-write.
-// Set up our page fault handler appropriately.
+// // User-level fork with copy-on-write.  // Set up our page fault handler appropriately.
 // Create a child.
 // Copy our address space and page fault handler setup to the child.
 // Then mark the child as runnable and return.
@@ -191,7 +192,7 @@ fork(void)
 // it will noinline t result in a page fault just like
 // what you would get with upvt[pn].
 // instead, you will get zero
-static inline pte_t get_pte(uint32_t pn) {
+pte_t get_pte(uint32_t pn) {
 	// does the corresponding page table exist ?
 	// in fact the PTE_U check is not necessary 
 	// since all entries of page table directory
