@@ -213,11 +213,9 @@ serve_read(envid_t envid, union Fsipc *ipc)
 {
 	struct Fsreq_read *req = &ipc->read;
 	struct Fsret_read *ret = &ipc->readRet;
-	// since ipc->readRet has only one page
-	// we panic on req_n that is larger than PGSIZE
-	if(req->req_n > PGSIZE)
-		panic("fs: environment %d requires more than 4096 bytes\n", envid);
-
+	// do not panic on large read requests
+	// or you will not be able to pass cat lorem
+	size_t bytes_to_read = MIN(req->req_n, PGSIZE);
 	if (debug)
 		cprintf("serve_read %08x %08x %08x\n", envid, req->req_fileid, req->req_n);
 
@@ -229,7 +227,7 @@ serve_read(envid_t envid, union Fsipc *ipc)
 		return r;
 
 	// if read succeeds, we update the seek position
-	if((r = file_read(o->o_file, (void *)ret->ret_buf, req->req_n, o->o_fd->fd_offset)) >= 0)
+	if((r = file_read(o->o_file, (void *)ret->ret_buf, bytes_to_read, o->o_fd->fd_offset)) >= 0)
 		o->o_fd->fd_offset += r;
 	return r;
 }
@@ -246,9 +244,10 @@ serve_write(envid_t envid, struct Fsreq_write *req)
 		cprintf("serve_write %08x %08x %08x\n", envid, req->req_fileid, req->req_n);
 
 	// LAB 5: Your code here.
-	// we panic on req_n that is larger than the data buf for write
-	if(req->req_n > sizeof(req->req_buf))
-		panic("fs: environment %d wants to write more than what the buffer can hold\n", envid);
+	
+	// do not panic on large write requests
+	// let the library deal with shortcount
+	size_t bytes_to_write = MIN(req->req_n, sizeof(req->req_buf));
 
 	if (debug)
 		cprintf("serve_read %08x %08x %08x\n", envid, req->req_fileid, req->req_n);
@@ -261,7 +260,7 @@ serve_write(envid_t envid, struct Fsreq_write *req)
 		return r;
 
 	// if read succeeds, we update the seek position
-	if((r = file_write(o->o_file, (void *)req->req_buf, req->req_n, o->o_fd->fd_offset)) >= 0)
+	if((r = file_write(o->o_file, (void *)req->req_buf, bytes_to_write, o->o_fd->fd_offset)) >= 0)
 		o->o_fd->fd_offset += r;
 	return r;
 }

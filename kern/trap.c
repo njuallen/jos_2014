@@ -288,7 +288,18 @@ trap_dispatch(struct Trapframe *tf)
 					tf->tf_regs.reg_ecx, tf->tf_regs.reg_ebx, tf->tf_regs.reg_edi, 
 					tf->tf_regs.reg_esi);
 			return;
+			break;
 
+			// keyboard interrupt
+			// remember to return
+		case IRQ_OFFSET + IRQ_KBD:
+			kbd_intr();
+			return;
+			break;
+			// serial irq
+		case IRQ_OFFSET + IRQ_SERIAL:
+			serial_intr();
+			return;
 			break;
 		default:
 			break;
