@@ -19,12 +19,12 @@ int head = 0;
 
 int tail = 0;
 
-void insert(int product) {
+void add_to_buffer(int product) {
 	buffer[tail++] = product;
 	tail %= N + 1; 
 }
 
-int remove() {
+int remove_from_buffer() {
 	int product = buffer[head++];
 	head %= N + 1;
 	return product;
@@ -70,7 +70,7 @@ void producer(void *arg) {
 		sys_sem_wait(sem_empty);
 		cprintf("produce\n");
 		sys_sem_wait(sem_mutex);
-		insert(-id);
+		add_to_buffer(-id);
 		sys_sem_post(sem_mutex);
 		cprintf("producer %d produced product %d\n", id, -id);
 		sys_sem_post(sem_full);
@@ -83,7 +83,7 @@ void consumer(void *arg) {
 		sys_sem_wait(sem_full);
 		cprintf("consume\n");
 		sys_sem_wait(sem_mutex);
-		int product = remove();
+		int product = remove_from_buffer();
 		sys_sem_post(sem_mutex);
 		cprintf("consumer %d consumed product %d\n", id, product);
 		sys_sem_post(sem_empty);

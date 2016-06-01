@@ -13,6 +13,7 @@ enum {
 	SYS_exofork,
 	SYS_exovfork,
 	SYS_env_set_status,
+	SYS_env_set_trapframe,
 	SYS_env_set_pgfault_upcall,
 	SYS_sem_open,
 	SYS_sem_close,

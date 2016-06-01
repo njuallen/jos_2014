@@ -115,16 +115,19 @@ i386_init(void)
 	// Starting non-boot CPUs
 	boot_aps();
 
-	// create an idle in case there is no runnable environment
-	ENV_CREATE(user_idle, ENV_TYPE_USER);
+	// Start fs.
+	ENV_CREATE(fs_fs, ENV_TYPE_FS);
 
 #if defined(TEST)
 	// Don't touch -- used by grading script!
 	ENV_CREATE(TEST, ENV_TYPE_USER);
 #else
 	// Touch all you want.
-	ENV_CREATE(user_forktree, ENV_TYPE_USER);
+	ENV_CREATE(user_icode, ENV_TYPE_USER);
 #endif // TEST*
+
+	// Should not be necessary - drains keyboard because interrupt has given up.
+	kbd_intr();
 
 	// Schedule and run the first user environment!
 	sched_yield();

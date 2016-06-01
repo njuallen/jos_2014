@@ -73,10 +73,6 @@ sys_env_destroy(envid_t envid)
 
 	if ((r = envid2env(envid, &e, 1)) < 0)
 		return r;
-	if (e == curenv)
-		cprintf("[%08x] exiting gracefully\n", curenv->env_id);
-	else
-		cprintf("[%08x] destroying %08x\n", curenv->env_id, e->env_id);
 	env_destroy(e);
 	return 0;
 }
@@ -221,6 +217,47 @@ sys_sem_post(int sem_id) {
 static int
 sys_sem_wait(int sem_id) {
 	return sem_wait(sem_id);
+}
+
+// Set envid's trap frame to 'tf'.
+// tf is modified to make sure that user environments always run at code
+// protection level 3 (CPL 3) with interrupts enabled.
+//
+// Returns 0 on success, < 0 on error.  Errors are:
+//	-E_BAD_ENV if environment envid doesn't currently exist,
+//		or the caller doesn't have permission to change envid.
+static int
+sys_env_set_trapframe(envid_t envid, struct Trapframe *tf)
+{
+	// LAB 5: Your code here.
+	// Remember to check whether the user has supplied us with a good
+	// address!
+
+	// is tf a user space address ?
+	if((uint32_t)tf >= UTOP)
+		return -E_INVAL;
+
+	// is the page corresponding to tf mapped in curenv?
+	// get the physical page mapped at srcva
+	struct PageInfo *pp = page_lookup(curenv->env_pgdir, (void *)ROUNDDOWN((uint32_t)tf, PGSIZE), NULL);
+	if(pp == NULL)
+		return -E_INVAL;
+
+	// check envid
+	struct Env *env;
+	int ret = envid2env(envid, &env, 1);
+	if(ret < 0)
+		return ret;
+
+	// copy the trapframe
+	memcpy(&env->env_tf, tf, sizeof(struct Trapframe));
+
+	// modify env_tf's cpl and eflags
+	env->env_tf.tf_cs = GD_UT | 3;
+	// use |= instead of =
+	// since user may want to set eflags to some nonzero initial value
+	env->env_tf.tf_eflags |= FL_IF;
+	return 0;
 }
 
 // Set the page fault upcall for 'envid' by modifying the corresponding struct
@@ -607,6 +644,9 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 		case SYS_sem_wait:
 			return sys_sem_wait(a1);
 			break;
+		case SYS_env_set_trapframe:
+			return sys_env_set_trapframe(a1, (void *)a2);
+			break;	
 		case SYS_ipc_recv:
 			return sys_ipc_recv((void *)a1);
 			break;
@@ -614,7 +654,10 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 			return sys_ipc_try_send(a1, a2, (void *)a3, a4);
 			break;
 		default:
-			return -E_NO_SYS;
+			return -E_INVAL;
+		// lab 4 default, I do not know the reason why it changed to -E_INVAL
+		//default:
+		//	return -E_NO_SYS;
 	}
 }
 
