@@ -154,3 +154,8 @@ int sys_sem_wait(int sem_id)
 {
 	return syscall(SYS_sem_wait, 1, sem_id, 0, 0, 0, 0);
 }
+
+void sys_read_rtc(struct Rtc *rtc)
+{
+	syscall(SYS_read_rtc, 1, (uint32_t)rtc, 0, 0, 0, 0);
+}

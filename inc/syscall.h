@@ -24,6 +24,7 @@ enum {
 	SYS_ipc_recv,
 	SYS_gettick,
 	SYS_sleep,
+	SYS_read_rtc,
 	NSYSCALLS
 };
 

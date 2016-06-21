@@ -296,7 +296,7 @@ walk_path(const char *path, struct File **pdir, struct File **pf, char *lastelem
 
 	// if (*path != '/')
 	//	return -E_BAD_PATH;
-	//	why changint path ? you already declared it with const!!!
+	//	why changing path ? you already declared it with const!!!
 	path = skip_slash(path);
 	f = &super->s_root;
 	dir = 0;

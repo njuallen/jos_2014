@@ -88,6 +88,7 @@ KERN_BINFILES +=	user/vfork  \
 					user/syssem \
 					user/ppc    \
 					user/tpc
+
 # Binary files for LAB5
 KERN_BINFILES +=	user/testfile \
 			user/spawnhello \
@@ -103,6 +104,9 @@ KERN_BINFILES +=	user/testpteshare \
 			user/primespipe \
 			user/testkbd \
 			user/testshell
+
+# for test read_rtc
+KERN_BINFILES +=	user/rtc
 
 KERN_OBJFILES := $(patsubst %.c, $(OBJDIR)/%.o, $(KERN_SRCFILES))
 KERN_OBJFILES := $(patsubst %.S, $(OBJDIR)/%.o, $(KERN_OBJFILES))

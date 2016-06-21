@@ -12,6 +12,7 @@
 #include <kern/syscall.h>
 #include <kern/console.h>
 #include <kern/sched.h>
+#include <kern/kclock.h>
 
 // Print a string to the system console.
 // The string is exactly 'len' characters long.
@@ -413,6 +414,10 @@ sys_page_map(envid_t srcenvid, void *srcva,
 	return 0;
 }
 
+static int sys_read_rtc(struct Rtc *rtc) {
+	read_rtc(rtc);
+	return 0;
+}
 
 // Unmap the page of memory at 'va' in the address space of 'envid'.
 // If no page is mapped, the function silently succeeds.
@@ -653,6 +658,8 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 		case SYS_ipc_try_send:
 			return sys_ipc_try_send(a1, a2, (void *)a3, a4);
 			break;
+		case SYS_read_rtc:
+			return sys_read_rtc((void *)a1);
 		default:
 			return -E_INVAL;
 		// lab 4 default, I do not know the reason why it changed to -E_INVAL

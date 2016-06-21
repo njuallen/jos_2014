@@ -6,6 +6,8 @@
 # error "This is a JOS kernel header; user programs should not #include it"
 #endif
 
+#include <inc/clock.h>
+
 #define	IO_RTC		0x070		/* RTC port */
 
 #define	MC_NVRAM_START	0xe	/* start of NVRAM: offset 14 */
@@ -28,5 +30,7 @@
 
 unsigned mc146818_read(unsigned reg);
 void mc146818_write(unsigned reg, unsigned datum);
+
+void read_rtc(struct Rtc *ret);
 
 #endif	// !JOS_KERN_KCLOCK_H

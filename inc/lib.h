@@ -20,6 +20,7 @@
 #include <inc/fs.h>
 #include <inc/fd.h>
 #include <inc/args.h>
+#include <inc/clock.h>
 
 #define USED(x)		(void)(x)
 
@@ -63,6 +64,7 @@ int sys_sem_open(int val);
 int sys_sem_close(int sem_id);
 int sys_sem_post(int sem_id);
 int sys_sem_wait(int sem_id);
+void sys_read_rtc(struct Rtc *rtc);
 
 // This must be inlined.  Exercise for reader: why?
 static __inline envid_t __attribute__((always_inline))
@@ -166,6 +168,7 @@ int	pipeisclosed(int pipefd);
 
 // wait.c
 void	wait(envid_t env);
+
 
 /* File open modes */
 #define	O_RDONLY	0x0000		/* open for reading only */
