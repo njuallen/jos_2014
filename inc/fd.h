@@ -7,6 +7,7 @@
 
 #include <inc/types.h>
 #include <inc/fs.h>
+#include <inc/clock.h>
 
 struct Fd;
 struct Stat;
@@ -42,6 +43,8 @@ struct Stat {
 	off_t st_size;
 	int st_isdir;
 	struct Dev *st_dev;
+	// only dev_file uses time
+	struct Rtc st_create, st_access, st_modify;
 };
 
 char*	fd2data(struct Fd *fd);

@@ -18,7 +18,10 @@ LIB_SRCFILES :=		$(LIB_SRCFILES) \
 
 # jthread source files
 LIB_SRCFILES +=		lib/thread.c \
-					lib/lock.c   \
+					lib/lock.c
+
+# for shell lab
+LIB_SRCFILES +=		lib/time.c
 
 LIB_SRCFILES :=		$(LIB_SRCFILES) \
 			lib/args.c \
@@ -31,6 +34,7 @@ LIB_SRCFILES :=		$(LIB_SRCFILES) \
 LIB_SRCFILES :=		$(LIB_SRCFILES) \
 			lib/pipe.c \
 			lib/wait.c
+
 
 LIB_OBJFILES := $(patsubst lib/%.c, $(OBJDIR)/lib/%.o, $(LIB_SRCFILES))
 LIB_OBJFILES := $(patsubst lib/%.S, $(OBJDIR)/lib/%.o, $(LIB_OBJFILES))

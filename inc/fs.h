@@ -5,6 +5,7 @@
 
 #include <inc/types.h>
 #include <inc/mmu.h>
+#include <inc/clock.h>
 
 // File nodes (both in-memory and on-disk)
 
@@ -31,6 +32,9 @@ struct File {
 	off_t f_size;			// file size in bytes
 	uint32_t f_type;		// file type
 
+	// for shell lab
+	struct Rtc f_create, f_access, f_modify;
+
 	// Block pointers.
 	// A block is allocated iff its value is != 0.
 	uint32_t f_direct[NDIRECT];	// direct blocks
@@ -38,7 +42,7 @@ struct File {
 
 	// Pad out to 256 bytes; must do arithmetic in case we're compiling
 	// fsformat on a 64-bit machine.
-	uint8_t f_pad[256 - MAXNAMELEN - 8 - 4*NDIRECT - 4];
+	uint8_t f_pad[256 - MAXNAMELEN - 8 - 4*NDIRECT - 4 - 3 * sizeof(struct Rtc)];
 } __attribute__((packed));	// required only on some 64-bit machines
 
 // An inode block contains exactly BLKFILES 'struct File's
@@ -101,6 +105,8 @@ union Fsipc {
 		char ret_name[MAXNAMELEN];
 		off_t ret_size;
 		int ret_isdir;
+		// for shell lab
+		struct Rtc ret_create, ret_access, ret_modify;
 	} statRet;
 	struct Fsreq_flush {
 		int req_fileid;

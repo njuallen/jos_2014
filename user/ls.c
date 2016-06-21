@@ -3,7 +3,8 @@
 int flag[256];
 
 void lsdir(const char*, const char*);
-void ls1(const char*, bool, off_t, const char*);
+void ls1(const char*, bool, off_t, const char*, 
+		struct Rtc create, struct Rtc access, struct Rtc modify);
 
 void
 ls(const char *path, const char *prefix)
@@ -16,7 +17,8 @@ ls(const char *path, const char *prefix)
 	if (st.st_isdir && !flag['d'])
 		lsdir(path, prefix);
 	else
-		ls1(0, st.st_isdir, st.st_size, path);
+		ls1(0, st.st_isdir, st.st_size, path, 
+				st.st_create, st.st_access, st.st_modify);
 }
 
 void
@@ -28,8 +30,10 @@ lsdir(const char *path, const char *prefix)
 	if ((fd = open(path, O_RDONLY)) < 0)
 		panic("open %s: %e", path, fd);
 	while ((n = readn(fd, &f, sizeof f)) == sizeof f)
+		// if it's not null, than it must be a valid entry
 		if (f.f_name[0])
-			ls1(prefix, f.f_type==FTYPE_DIR, f.f_size, f.f_name);
+			ls1(prefix, f.f_type==FTYPE_DIR, f.f_size, f.f_name,
+					f.f_create, f.f_access, f.f_modify);
 	if (n > 0)
 		panic("short read in directory %s", path);
 	if (n < 0)
@@ -37,12 +41,17 @@ lsdir(const char *path, const char *prefix)
 }
 
 void
-ls1(const char *prefix, bool isdir, off_t size, const char *name)
+ls1(const char *prefix, bool isdir, off_t size, const char *name,
+	   	struct Rtc create, struct Rtc access, struct Rtc modify)
 {
 	const char *sep;
 
-	if(flag['l'])
-		printf("%11d %c ", size, isdir ? 'd' : '-');
+	if(flag['l']) {
+		printf("%11d %c\n", size, isdir ? 'd' : '-');
+		printf("create time: %s\n", asctime(&create));
+		printf("access time: %s\n", asctime(&access));
+		printf("modify time: %s\n", asctime(&modify));
+	}
 	if(prefix) {
 		if (prefix[0] && prefix[strlen(prefix)-1] != '/')
 			sep = "/";
@@ -56,6 +65,11 @@ ls1(const char *prefix, bool isdir, off_t size, const char *name)
 	printf("\n");
 }
 
+// -d controls whether prefix should be printed for a directory
+// by default, the prefix will be printed out
+// -F controls whether directory name should be followed by a '/'
+// by default, it will not
+// -l controls whether gives a full imformation about files
 void
 usage(void)
 {

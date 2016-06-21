@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
@@ -27,6 +28,9 @@
 typedef uint32_t physaddr_t;
 typedef uint32_t off_t;
 typedef int bool;
+
+struct tm *cur_time = NULL;
+struct Rtc rtc;
 
 #include <inc/mmu.h>
 #include <inc/fs.h>
@@ -136,6 +140,11 @@ finishfile(struct File *f, uint32_t start, uint32_t len)
 {
 	int i;
 	f->f_size = len;
+	// for shell lab
+	// record the time
+	f->f_create = rtc; 
+	f->f_access = rtc;
+	f->f_modify = rtc;
 	len = ROUNDUP(len, BLKSIZE);
 	for (i = 0; i < len / BLKSIZE && i < NDIRECT; ++i)
 		f->f_direct[i] = start + i;
@@ -170,7 +179,9 @@ void
 finishdir(struct Dir *d)
 {
 	int size = d->n * sizeof(struct File);
+	// 
 	struct File *start = alloc(size);
+	// the contents of the root directory
 	memmove(start, d->ents, size);
 	finishfile(d->f, blockof(start), ROUNDUP(size, BLKSIZE));
 	free(d->ents);
@@ -190,17 +201,26 @@ writefile(struct Dir *dir, const char *name)
 		panic("open %s: %s", name, strerror(errno));
 	if ((r = fstat(fd, &st)) < 0)
 		panic("stat %s: %s", name, strerror(errno));
+	// only deal with regular files
 	if (!S_ISREG(st.st_mode))
 		panic("%s is not a regular file", name);
 	if (st.st_size >= MAXFILESIZE)
 		panic("%s too large", name);
 
+	// returns a pointer to the last occurrence of the character '/' in the string name
+	// this means we only take out file name
 	last = strrchr(name, '/');
+	
 	if (last)
 		last++;
 	else
 		last = name;
 
+#ifdef DEBUG
+	printf("name:%s | after:%s\n", name, last);
+#endif
+
+	// get a File to write to
 	f = diradd(dir, FTYPE_REG, last);
 	start = alloc(st.st_size);
 	readn(fd, start, st.st_size);
@@ -231,6 +251,29 @@ main(int argc, char **argv)
 	if (*s || s == argv[2] || nblocks < 2 || nblocks > 1024)
 		usage();
 
+	// get current time
+	time_t tmp = time(NULL);
+	// it seems that localtime is better than gmtime
+	// but since our qemu uses gmtime
+	// we need our fs to be consistent with qemu's time zone
+	// so we use gmtime
+	cur_time = gmtime(&tmp);
+
+	// fills up rtc
+	rtc.second = cur_time->tm_sec;
+	rtc.minute = cur_time->tm_min;
+	rtc.hour = cur_time->tm_hour;
+	rtc.day = cur_time->tm_mday;
+	rtc.month = cur_time->tm_mon;
+	// tm_year: the number of years since 1900
+	rtc.year = cur_time->tm_year + 1900;
+	printf("%d\n", rtc.year);
+
+	// output fs creating time
+	// the output string of asctime includes a newline
+	// so we do not need to add a '\n' manually
+	printf("file system created at: %s", asctime(cur_time));
+
 	opendisk(argv[1]);
 
 	startdir(&super->s_root, &root);
@@ -241,4 +284,3 @@ main(int argc, char **argv)
 	finishdisk();
 	return 0;
 }
-

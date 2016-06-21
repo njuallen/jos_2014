@@ -284,6 +284,11 @@ serve_stat(envid_t envid, union Fsipc *ipc)
 	strcpy(ret->ret_name, o->o_file->f_name);
 	ret->ret_size = o->o_file->f_size;
 	ret->ret_isdir = (o->o_file->f_type == FTYPE_DIR);
+	// for shell lab
+	// we also send back the time attributes associated with each file
+	ret->ret_create = o->o_file->f_create;
+	ret->ret_access = o->o_file->f_access;
+	ret->ret_modify = o->o_file->f_modify;
 	return 0;
 }
 
