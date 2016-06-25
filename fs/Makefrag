@@ -31,7 +31,9 @@ USERAPPS :=		$(USERAPPS) \
 			$(OBJDIR)/user/testshell \
 			$(OBJDIR)/user/hello \
 			$(OBJDIR)/user/gobang \
-			$(OBJDIR)/user/mkdir
+			$(OBJDIR)/user/mkdir \
+			$(OBJDIR)/user/myls
+
 			 
 
 FSIMGTXTFILES :=	$(FSIMGTXTFILES) \
@@ -39,6 +41,9 @@ FSIMGTXTFILES :=	$(FSIMGTXTFILES) \
 			fs/script \
 			fs/testshell.key \
 			fs/testshell.sh
+
+# for testing hidden files
+FSIMGTXTFILES += fs/.lorem
 
 
 FSIMGFILES := $(FSIMGTXTFILES) $(USERAPPS)

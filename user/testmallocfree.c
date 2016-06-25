@@ -18,7 +18,6 @@ umain(int argc, char **argv)
 		   if(p[i][j] != j)
 			   panic("test failed!\n");
 	}
-	for(i = 0; i < 100; i++) {
+	for(i = 0; i < 100; i++)
 		free(p[i]);
-	}
 }
