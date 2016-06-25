@@ -267,7 +267,6 @@ main(int argc, char **argv)
 	rtc.month = cur_time->tm_mon;
 	// tm_year: the number of years since 1900
 	rtc.year = cur_time->tm_year + 1900;
-	printf("%d\n", rtc.year);
 
 	// output fs creating time
 	// the output string of asctime includes a newline

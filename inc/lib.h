@@ -172,6 +172,10 @@ void	wait(envid_t env);
 // time.c
 char *asctime(const struct Rtc *rtc);
 
+// malloc.c
+void *malloc(unsigned int size);
+void free(void *p);
+
 
 /* File open modes */
 #define	O_RDONLY	0x0000		/* open for reading only */
