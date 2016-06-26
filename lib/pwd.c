@@ -15,6 +15,11 @@ char *pwd(void) {
 	return &working_directory[0];
 }
 
+struct List_elem {
+	char *path;
+	struct List_elem *prev, *next;
+};
+
 
 char *get_abs_path(const char *path) {
 	if(debug) {
@@ -31,6 +36,75 @@ char *get_abs_path(const char *path) {
 			return NULL;
 		strncpy(newpath, working_directory, MAXPATHLEN);
 		strcat(newpath, path);
+	}
+
+	// now we need to deal with . and ..
+	// well, I need C++ string to deal with these dirty things!
+
+	// store each level of path name in a list
+	// so that we can deal with '.' and '..' much more easily
+
+	// the dummy element
+	struct List_elem *head, *tail;
+	head = tail = (struct List_elem *)Malloc(sizeof(struct List_elem));
+	tail->path = "/";
+	tail->prev = tail;
+	tail->next = tail;
+
+	// skip the first '/'
+	get_token_init(strchr(newpath, '/') + 1, "/");
+	char *token;
+	while((token = get_token())) {
+		if(debug)
+			printf("token: %s\n", token);
+		if(!strcmp(token, "."))
+			free(token);
+		else if(!strcmp(token, "..")) {
+			// go to the parent directory
+			// which means we need to remove the tail of the list
+			// '/''s father is itself
+			if(tail != head) {
+				tail->next->prev = tail->prev;
+				tail->prev->next = tail->next;
+				struct List_elem *to_be_removed = tail;
+				tail = tail->prev;
+				free(to_be_removed);
+			}
+			free(token);
+		}
+		else {
+			struct List_elem *elem = (struct List_elem *)Malloc(sizeof(struct List_elem));
+			elem->path = token;
+			elem->next = tail->next;
+			elem->prev = tail;
+			tail->next = elem;
+			tail = elem;
+		}
+	}
+	struct List_elem *p = head->next;
+	char *ret = strcopy("/");
+	bool first = true;
+	while(p != head) {
+		char *tmp_1;
+		if(first) {
+			tmp_1 = addstr(ret, "");
+			first = false;
+		}
+		else
+			tmp_1 = addstr(ret, "/");
+		char *tmp_2 = addstr(tmp_1, p->path);
+		free(ret);
+		free(tmp_1);
+		free(p->path);
+		p = p->next;
+		free(p->prev);
+		ret = tmp_2;
+	}
+	strcpy(newpath, ret);
+	free(ret);
+	if(debug) {
+		printf("ret:%s\n", ret);
+		printf("newpath:%s\n", newpath);
 	}
 	return &newpath[0];
 }

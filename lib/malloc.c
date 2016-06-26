@@ -44,6 +44,43 @@ void *malloc(unsigned int size) {
 	return result;
 }
 
+// a wrapper of malloc
+// if malloc fails it will panic
+void *Malloc(unsigned int size) {
+	void *p;
+	if(!(p = malloc(size)))
+			panic("Malloc: malloc failed\n");
+	return p;
+}
+
 void free(void *p) {
 	// do nothing
+}
+
+char *substr(const char *str, int len) {
+	if(len < 0)
+		panic("substr: invalid length %d\n", len);
+
+	char *ret = (char *)Malloc((len + 1) * sizeof(char));
+
+	memcpy(ret, str, len * sizeof(char));
+	ret[len] = '\0';
+	return ret;
+}
+
+char *strcopy(const char *str) {
+	int len = strlen(str);
+	char *s = Malloc((len + 1) * sizeof(char));
+	strcpy(s, str);
+	return s;
+}
+
+char *addstr(const char *s1, const char *s2) {
+	int l1 = strlen(s1);
+	int l2 = strlen(s2);
+	char *str;
+	str = (char *)Malloc(l1 + l2 + 1);
+	strcpy(str, s1);
+	strcpy(str + l1, s2);
+	return str;
 }

@@ -174,12 +174,20 @@ char *asctime(const struct Rtc *rtc);
 
 // malloc.c
 void *malloc(unsigned int size);
+void *Malloc(unsigned int size);
 void free(void *p);
+char *substr(const char *str, int len);
+char *strcopy(const char *str);
+char *addstr(const char *s1, const char *s2);
 
 // pwd.c
 char *pwd(void);
 char *get_abs_path(const char *path);
 int chdir(const char *path);
+
+// parse.c
+void get_token_init(const char *str, const char *separator);
+char *get_token(void);
 
 
 /* File open modes */

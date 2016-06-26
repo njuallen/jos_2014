@@ -106,14 +106,10 @@ KERN_BINFILES +=	user/testpteshare \
 			user/testshell
 
 # shell lab
-# for test read_rtc
-KERN_BINFILES +=	user/rtc
-
-# for testing malloc
-KERN_BINFILES +=	user/testmallocfree
-
-# myls
-KERN_BINFILES +=	user/myls
+KERN_BINFILES +=	user/rtc \
+					user/testmallocfree \
+					user/myls \
+					user/testparse
 
 KERN_OBJFILES := $(patsubst %.c, $(OBJDIR)/%.o, $(KERN_SRCFILES))
 KERN_OBJFILES := $(patsubst %.S, $(OBJDIR)/%.o, $(KERN_OBJFILES))
