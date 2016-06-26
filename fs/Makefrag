@@ -32,8 +32,10 @@ USERAPPS :=		$(USERAPPS) \
 			$(OBJDIR)/user/hello \
 			$(OBJDIR)/user/gobang \
 			$(OBJDIR)/user/mkdir \
-			$(OBJDIR)/user/myls \
-			$(OBJDIR)/user/testparse 
+			$(OBJDIR)/user/testparse \
+			$(OBJDIR)/user/touch \
+			$(OBJDIR)/user/stat
+
 
 
 			 

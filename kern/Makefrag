@@ -105,12 +105,6 @@ KERN_BINFILES +=	user/testpteshare \
 			user/testkbd \
 			user/testshell
 
-# shell lab
-KERN_BINFILES +=	user/rtc \
-					user/testmallocfree \
-					user/myls \
-					user/testparse
-
 KERN_OBJFILES := $(patsubst %.c, $(OBJDIR)/%.o, $(KERN_SRCFILES))
 KERN_OBJFILES := $(patsubst %.S, $(OBJDIR)/%.o, $(KERN_OBJFILES))
 KERN_OBJFILES := $(patsubst $(OBJDIR)/lib/%, $(OBJDIR)/kern/%, $(KERN_OBJFILES))

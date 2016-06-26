@@ -86,6 +86,8 @@ char *get_abs_path(const char *path) {
 	bool first = true;
 	while(p != head) {
 		char *tmp_1;
+		// do not concat p with a "/"
+		// in case you get a "//"
 		if(first) {
 			tmp_1 = addstr(ret, "");
 			first = false;

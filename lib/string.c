@@ -106,6 +106,19 @@ strchr(const char *s, char c)
 	return 0;
 }
 
+char *
+strrchr(const char *s, char c)
+{
+	int len = strlen(s);
+	char *p = (char *)s + len - 1;
+	while(p >= s)
+		if(*p == c)
+			return p; 
+		else
+			p--;
+	return NULL;
+}
+
 // Return a pointer to the first occurrence of 'c' in 's',
 // or a pointer to the string-ending null character if the string has no 'c'.
 char *

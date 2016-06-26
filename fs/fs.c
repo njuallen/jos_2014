@@ -360,6 +360,12 @@ file_create(const char *path, struct File **pf)
 
 	strcpy(f->f_name, name);
 	*pf = f;
+
+	// initialize all the time attributes
+	struct Rtc curr;
+	sys_read_rtc(&curr);
+	f->f_create = f->f_access = f->f_modify = curr;
+
 	file_flush(dir);
 	return 0;
 }
@@ -381,6 +387,9 @@ file_read(struct File *f, void *buf, size_t count, off_t offset)
 	int r, bn;
 	off_t pos;
 	char *blk;
+
+	// update access time
+	sys_read_rtc(&f->f_access);
 
 	if (offset >= f->f_size)
 		return 0;
@@ -424,6 +433,13 @@ file_write(struct File *f, const void *buf, size_t count, off_t offset)
 		pos += bn;
 		buf += bn;
 	}
+
+	// update modification time
+	// we put it at the end of the function
+	// so that the modification time is updated only if the write succeeds
+	// if you write 0 bytes, the modification time is also updated
+	// touch uses this feature to update modification time
+	sys_read_rtc(&f->f_modify);
 
 	return count;
 }
