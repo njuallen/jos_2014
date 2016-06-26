@@ -6,7 +6,7 @@
 #define UTEMP3			(UTEMP2 + PGSIZE)
 
 // Helper functions for spawn.
-static int init_stack(envid_t child, const char **argv, uintptr_t *init_esp);
+static int init_stack(envid_t child, const char **argv, const char *pwd, uintptr_t *init_esp);
 static int map_segment(envid_t child, uintptr_t va, size_t memsz,
 		       int fd, size_t filesz, off_t fileoffset, int perm);
 static int copy_shared_pages(envid_t child);
@@ -17,7 +17,7 @@ static int copy_shared_pages(envid_t child);
 // 	 which will be passed to the child as its command-line arguments.
 // Returns child envid on success, < 0 on failure.
 int
-spawn(const char *prog, const char **argv)
+spawn(const char *prog, const char **argv, const char *pwd)
 {
 	unsigned char elf_buf[512];
 	struct Trapframe child_tf;
@@ -107,7 +107,7 @@ spawn(const char *prog, const char **argv)
 	child_tf = envs[ENVX(child)].env_tf;
 	child_tf.tf_eip = elf->e_entry;
 
-	if ((r = init_stack(child, argv, &child_tf.tf_esp)) < 0)
+	if ((r = init_stack(child, argv, pwd, &child_tf.tf_esp)) < 0)
 		return r;
 
 	// Set up program segments as defined in ELF header.
@@ -147,7 +147,7 @@ error:
 // NOTE: Must have a sentinal of NULL at the end of the args
 // (none of the args may be NULL).
 int
-spawnl(const char *prog, const char *arg0, ...)
+spawnl(const char *prog, const char *pwd, const char *arg0, ...)
 {
 	// We calculate argc by advancing the args until we hit NULL.
 	// The contract of the function guarantees that the last
@@ -171,7 +171,7 @@ spawnl(const char *prog, const char *arg0, ...)
 	for(i=0;i<argc;i++)
 		argv[i+1] = va_arg(vl, const char *);
 	va_end(vl);
-	return spawn(prog, argv);
+	return spawn(prog, argv, pwd);
 }
 
 
@@ -183,7 +183,7 @@ spawnl(const char *prog, const char *arg0, ...)
 // to the initial stack pointer with which the child should start.
 // Returns < 0 on failure.
 static int
-init_stack(envid_t child, const char **argv, uintptr_t *init_esp)
+init_stack(envid_t child, const char **argv, const char *pwd, uintptr_t *init_esp)
 {
 	size_t string_size;
 	int argc, i, r;
@@ -196,6 +196,9 @@ init_stack(envid_t child, const char **argv, uintptr_t *init_esp)
 	for (argc = 0; argv[argc] != 0; argc++)
 		string_size += strlen(argv[argc]) + 1;
 
+	// take the pwd string into consideration
+	string_size += strlen(pwd) + 1;
+
 	// Determine where to place the strings and the argv array.
 	// Set up pointers into the temporary page 'UTEMP'; we'll map a page
 	// there later, then remap that page into the child environment
@@ -206,9 +209,9 @@ init_stack(envid_t child, const char **argv, uintptr_t *init_esp)
 	// a null pointer.
 	argv_store = (uintptr_t*) (ROUNDDOWN(string_store, 4) - 4 * (argc + 1));
 
-	// Make sure that argv, strings, and the 2 words that hold 'argc'
-	// and 'argv' themselves will all fit in a single stack page.
-	if ((void*) (argv_store - 2) < (void*) UTEMP)
+	// Make sure that argv, strings, and the 3 words that hold 'argc'
+	// , 'argv' and 'pwd' themselves will all fit in a single stack page.
+	if ((void*) (argv_store - 3) < (void*) UTEMP)
 		return -E_NO_MEM;
 
 	// Allocate the single stack page at UTEMP.
@@ -237,13 +240,19 @@ init_stack(envid_t child, const char **argv, uintptr_t *init_esp)
 		strcpy(string_store, argv[i]);
 		string_store += strlen(argv[i]) + 1;
 	}
+
+	// copy the pwd down
+	strcpy(string_store, pwd);
+	string_store += strlen(pwd) + 1;
+
 	argv_store[argc] = 0;
 	assert(string_store == (char*)UTEMP + PGSIZE);
 
-	argv_store[-1] = UTEMP2USTACK(argv_store);
-	argv_store[-2] = argc;
+	argv_store[-1] = UTEMP2USTACK(string_store - strlen(pwd) - 1);
+	argv_store[-2] = UTEMP2USTACK(argv_store);
+	argv_store[-3] = argc;
 
-	*init_esp = UTEMP2USTACK(&argv_store[-2]);
+	*init_esp = UTEMP2USTACK(&argv_store[-3]);
 
 	// After completing the stack, map it into the child's address space
 	// and unmap it from ours!

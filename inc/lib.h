@@ -153,8 +153,8 @@ int	pageref(void *addr);
 
 
 // spawn.c
-envid_t	spawn(const char *program, const char **argv);
-envid_t	spawnl(const char *program, const char *arg0, ...);
+envid_t	spawn(const char *program, const char **argv, const char *pwd);
+envid_t	spawnl(const char *program, const char *pwd, const char *arg0, ...);
 
 // console.c
 void	cputchar(int c);
@@ -175,6 +175,11 @@ char *asctime(const struct Rtc *rtc);
 // malloc.c
 void *malloc(unsigned int size);
 void free(void *p);
+
+// pwd.c
+char *pwd(void);
+char *get_abs_path(const char *path);
+int chdir(const char *path);
 
 
 /* File open modes */

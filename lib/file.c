@@ -12,7 +12,7 @@ union Fsipc fsipcbuf __attribute__((aligned(PGSIZE)));
 // type: request code, passed as the simple integer IPC value.
 // dstva: virtual address at which to receive reply page, 0 if none.
 // Returns result from the file server.
-static int
+	static int
 fsipc(unsigned type, void *dstva)
 {
 	static envid_t fsenv;
@@ -51,7 +51,7 @@ struct Dev devfile =
 // 	The file descriptor index on success
 // 	-E_BAD_PATH if the path is too long (>= MAXPATHLEN)
 // 	< 0 for other errors.
-int
+	int
 open(const char *path, int mode)
 {
 	// Find an unused file descriptor page using fd_alloc.
@@ -71,13 +71,19 @@ open(const char *path, int mode)
 	int r;
 	struct Fd *fd;
 
-	if (strlen(path) >= MAXPATHLEN)
+	char *abs_path = get_abs_path(path);
+	if(debug)
+		printf("abs_path:%s\n", abs_path);
+	if(!abs_path)
+		return -E_BAD_PATH;
+
+	if (strlen(abs_path) >= MAXPATHLEN)
 		return -E_BAD_PATH;
 
 	if ((r = fd_alloc(&fd)) < 0)
 		return r;
 
-	strcpy(fsipcbuf.open.req_path, path);
+	strcpy(fsipcbuf.open.req_path, abs_path);
 	fsipcbuf.open.req_omode = mode;
 
 	if ((r = fsipc(FSREQ_OPEN, fd)) < 0) {
@@ -96,7 +102,7 @@ open(const char *path, int mode)
 // open, unmapping it is enough to free up server-side resources.
 // Other than that, we just have to make sure our changes are flushed
 // to disk.
-static int
+	static int
 devfile_flush(struct Fd *fd)
 {
 	fsipcbuf.flush.req_fileid = fd->fd_file.id;
@@ -108,7 +114,7 @@ devfile_flush(struct Fd *fd)
 // Returns:
 // 	The number of bytes successfully read.
 // 	< 0 on error.
-static ssize_t
+	static ssize_t
 devfile_read(struct Fd *fd, void *buf, size_t n)
 {
 	// Make an FSREQ_READ request to the file system server after
@@ -133,7 +139,7 @@ devfile_read(struct Fd *fd, void *buf, size_t n)
 // Returns:
 //	 The number of bytes successfully written.
 //	 < 0 on error.
-static ssize_t
+	static ssize_t
 devfile_write(struct Fd *fd, const void *buf, size_t n)
 {
 	// Make an FSREQ_WRITE request to the file system server.  Be
@@ -167,7 +173,7 @@ devfile_write(struct Fd *fd, const void *buf, size_t n)
 	return count;
 }
 
-static int
+	static int
 devfile_stat(struct Fd *fd, struct Stat *st)
 {
 	int r;
@@ -185,7 +191,7 @@ devfile_stat(struct Fd *fd, struct Stat *st)
 }
 
 // Truncate or extend an open file to 'size' bytes
-static int
+	static int
 devfile_trunc(struct Fd *fd, off_t newsize)
 {
 	fsipcbuf.set_size.req_fileid = fd->fd_file.id;
@@ -195,7 +201,7 @@ devfile_trunc(struct Fd *fd, off_t newsize)
 
 
 // Synchronize disk with buffer cache
-int
+	int
 sync(void)
 {
 	// Ask the file server to update the disk

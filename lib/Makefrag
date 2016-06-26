@@ -34,7 +34,8 @@ LIB_SRCFILES :=		$(LIB_SRCFILES) \
 
 LIB_SRCFILES :=		$(LIB_SRCFILES) \
 			lib/pipe.c \
-			lib/wait.c
+			lib/wait.c \
+			lib/pwd.c
 
 
 LIB_OBJFILES := $(patsubst lib/%.c, $(OBJDIR)/lib/%.o, $(LIB_SRCFILES))

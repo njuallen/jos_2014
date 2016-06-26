@@ -7,7 +7,7 @@
 // the heap grows from 0x90000000
 #define HEAP_BOTTOM 0x90000000
 
-#define HEAP_LIMIT 0xD0000000 
+#define HEAP_LIMIT 0xD0000000
 
 static unsigned int heap_top = HEAP_BOTTOM;
 

@@ -1,5 +1,7 @@
 #include <inc/lib.h>
 
+#define debug 0
+
 int flag[256];
 
 // -a output all files(hidden files included)
@@ -19,10 +21,9 @@ enum list_type {
 	directory = 2
 };
 
-#define MAX_NAME_LEN 128
 // element in a list
 struct List {
-	char name[MAX_NAME_LEN + 1];
+	char name[MAXNAMELEN + 1];
 	int type;
 	off_t size;
 	struct Rtc create, access, modify;
@@ -51,7 +52,7 @@ struct List *lsdir(const char *path)
 			struct List *curr = (struct List *)malloc(1 * sizeof(struct List));
 			// not necessarily null terminated after strncpy
 			// but I do not care
-			strncpy(curr->name, f.f_name, MAX_NAME_LEN);
+			strncpy(curr->name, f.f_name, MAXNAMELEN);
 			curr->type = (f.f_type == FTYPE_DIR) ? directory : regular; 
 			curr->size = f.f_size;
 			curr->create = f.f_create;
@@ -85,7 +86,7 @@ struct List *ls(const char *path)
 		panic("stat %s: %e", path, r);
 
 	struct List *ret = (struct List *)malloc(1 * sizeof(struct List));
-	strncpy(ret->name, path, MAX_NAME_LEN);
+	strncpy(ret->name, path, MAXNAMELEN);
 	ret->type = st.st_isdir ? directory : regular; 
 	ret->size = st.st_size;
 	ret->create = st.st_create;
@@ -113,7 +114,7 @@ void build_file_list(int argc, char **argv) {
 
 	// list current directory
 	if (argc == 1) {
-		curr = ls("/");
+		curr = ls("");
 		tail->next = curr;
 		curr->prev = tail;
 		tail = curr;
@@ -316,6 +317,8 @@ umain(int argc, char **argv)
 				usage();
 		}
 
+	if(debug)
+		printf("myls pwd:%s\n", pwd());
 	build_file_list(argc, argv);
 	filter();
 	print();

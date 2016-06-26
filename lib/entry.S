@@ -23,9 +23,10 @@ _start:
 	cmpl $USTACKTOP, %esp
 	jne args_exist
 
-	// If not, push dummy argc/argv arguments.
+	// If not, push dummy argc/argv/pwd arguments.
 	// This happens when we are loaded by the kernel,
 	// because the kernel does not know about passing arguments.
+	pushl $0
 	pushl $0
 	pushl $0
 

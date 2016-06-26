@@ -151,7 +151,7 @@ runit:
 	}
 
 	// Spawn the command!
-	if ((r = spawn(argv[0], (const char**) argv)) < 0)
+	if ((r = spawn(argv[0], (const char**) argv, pwd())) < 0)
 		cprintf("spawn %s: %e\n", argv[0], r);
 
 	// In the parent, close all file descriptors and wait for the
@@ -275,17 +275,17 @@ umain(int argc, char **argv)
 	argstart(&argc, argv, &args);
 	while ((r = argnext(&args)) >= 0)
 		switch (r) {
-		case 'd':
-			debug++;
-			break;
-		case 'i':
-			interactive = 1;
-			break;
-		case 'x':
-			echocmds = 1;
-			break;
-		default:
-			usage();
+			case 'd':
+				debug++;
+				break;
+			case 'i':
+				interactive = 1;
+				break;
+			case 'x':
+				echocmds = 1;
+				break;
+			default:
+				usage();
 		}
 
 	if (argc > 2)
@@ -316,11 +316,51 @@ umain(int argc, char **argv)
 			printf("# %s\n", buf);
 		if (debug)
 			cprintf("BEFORE FORK\n");
+
+		// deal with the builtin command cd
+		if(strlen(buf) >= 2) {
+			if(buf[0] == 'c' && buf[1] == 'd') {
+				if(strlen(buf) == 2) {
+					cprintf("cd: expect a path\n");
+					continue;
+				}
+				if(buf[2] == ' ' || buf[2] == '\t') {
+					// skip spaces
+					char *path = &buf[2];
+					while(*path)
+						if(*path != ' ' && *path != '\t')
+							break;
+						else
+							path++;
+					if(!path) {
+						cprintf("cd: expect a path\n");
+						continue;
+					}
+					else {
+						if((r = chdir(path)) < 0)
+							cprintf("cd: can not change path\n");
+						continue;
+					}
+				}
+			}
+		}
+
+		// deal with builtin command pwd
+		if(strlen(buf) >= 3 && buf[0] == 'p'
+				&& buf[1] == 'w' && buf[2] == 'd'
+				&& (buf[3] == '\0' || buf[3] == '\t' || buf[3] == ' ')) {
+			printf("%s\n", pwd());
+			continue;
+		}
+
+
 		if ((r = fork()) < 0)
 			panic("fork: %e", r);
 		if (debug)
 			cprintf("FORK: %d\n", r);
 		if (r == 0) {
+			if(debug)
+				printf("runcmd: pwd is %s\n", pwd());
 			runcmd(buf);
 			exit();
 		} else
