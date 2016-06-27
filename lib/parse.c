@@ -40,9 +40,11 @@ char *get_token(void) {
 		p = ptr;
 		return substr(start, ptr - start);
 	}
-	else {
-		free(s);
-		free(sep);
-	}
 	return NULL;
+}
+
+void get_token_free(void) {
+	free(s);
+	free(sep);
+	s = sep = p = NULL;
 }

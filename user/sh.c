@@ -23,6 +23,9 @@ runcmd(char* s)
 {
 	char *argv[MAXARGS], *t, argv0buf[BUFSIZ];
 	int argc, c, i, r, p[2], fd, pipe_child;
+	int next;
+	bool append;
+	struct Stat st;
 
 	pipe_child = 0;
 	gettoken(s, 0);
@@ -68,13 +71,40 @@ again:
 
 		case '>':	// Output redirection
 			// Grab the filename from the argument list
-			if (gettoken(0, &t) != 'w') {
-				cprintf("syntax error: > not followed by word\n");
+			next = gettoken(0, &t);
+			// deal with ">>"
+			append = false;
+			if(next == '>') {
+				next = gettoken(0, &t);
+				append = true;
+			}
+			if (next != 'w') {
+				cprintf("syntax error: %s not followed by word\n", append ? ">>" : ">");
 				exit();
 			}
-			if ((fd = open(t, O_WRONLY|O_CREAT|O_TRUNC)) < 0) {
-				cprintf("open %s for write: %e", t, fd);
-				exit();
+			if(append) {
+				// well, fs does not support O_APPEND
+				// so we need to manually move the pointer to the end of the file
+				if ((fd = open(t, O_WRONLY|O_CREAT)) < 0) {
+					cprintf("open %s for write: %e", t, fd);
+					exit();
+				}
+				// use stat to get the file size
+				if ((r = stat(t, &st)) < 0) {
+					cprintf("stat %s: %e", t, r);
+					exit();
+				}
+			    // move the pointer to the end
+				if((r = seek(fd, st.st_size)) < 0) {
+					cprintf("seek %s: %e", t, r);
+					exit();
+				}
+			}
+			else {
+				if ((fd = open(t, O_WRONLY|O_CREAT|O_TRUNC)) < 0) {
+					cprintf("open %s for write: %e", t, fd);
+					exit();
+				}
 			}
 			if (fd != 1) {
 				dup(fd, 1);
@@ -264,6 +294,42 @@ usage(void)
 	exit();
 }
 
+
+// deal with very simple builtin commands
+// such as "cd" and "pwd"
+int do_builtin(char *str) {
+	// first, we need to make our own copy of str
+	// since I do not know whether gettoken will modify str
+	char *s = strcopy(str);
+	int r;
+
+	get_token_init(s, " \t");
+	char *cmd;
+	// -1: no valid token found, it's an string of white spaces and tabs
+	// 1 : builtin command
+	// 0 : needs follow-up processing
+	int ret = -1;
+	if((cmd = get_token())) {
+		// deal with cd
+		if(!strcmp(cmd, "cd")) {
+			ret = 1;
+			char *path;
+			if((path = get_token()))
+				if((r = chdir(path)) < 0)
+					cprintf("cd: can not change path\n");
+		}
+		else if(!strcmp(cmd, "pwd")) {
+			ret = 1;
+			printf("%s\n", pwd());
+		}
+		else
+			ret = 0;
+	}
+	get_token_free();
+	free(s);
+	return ret;
+}
+
 void
 umain(int argc, char **argv)
 {
@@ -302,7 +368,7 @@ umain(int argc, char **argv)
 	while (1) {
 		char *buf;
 
-		buf = readline(interactive ? "$ " : NULL);
+		buf = getline(interactive ? "$ " : NULL);
 		if (buf == NULL) {
 			if (debug)
 				cprintf("EXITING\n");
@@ -317,42 +383,10 @@ umain(int argc, char **argv)
 		if (debug)
 			cprintf("BEFORE FORK\n");
 
-		// deal with the builtin command cd
-		if(strlen(buf) >= 2) {
-			if(buf[0] == 'c' && buf[1] == 'd') {
-				if(strlen(buf) == 2) {
-					cprintf("cd: expect a path\n");
-					continue;
-				}
-				if(buf[2] == ' ' || buf[2] == '\t') {
-					// skip spaces
-					char *path = &buf[2];
-					while(*path)
-						if(*path != ' ' && *path != '\t')
-							break;
-						else
-							path++;
-					if(!path) {
-						cprintf("cd: expect a path\n");
-						continue;
-					}
-					else {
-						if((r = chdir(path)) < 0)
-							cprintf("cd: can not change path\n");
-						continue;
-					}
-				}
-			}
-		}
 
-		// deal with builtin command pwd
-		if(strlen(buf) >= 3 && buf[0] == 'p'
-				&& buf[1] == 'w' && buf[2] == 'd'
-				&& (buf[3] == '\0' || buf[3] == '\t' || buf[3] == ' ')) {
-			printf("%s\n", pwd());
+		// deal with builtin commands first
+		if(do_builtin(buf))
 			continue;
-		}
-
 
 		if ((r = fork()) < 0)
 			panic("fork: %e", r);

@@ -42,6 +42,12 @@ void	set_pgfault_handler(void (*handler)(struct UTrapframe *utf));
 // readline.c
 char*	readline(const char *buf);
 
+// getline.c
+// do not put this in readline.c
+// since kernel will also use readline.c
+// but our getline.c needs Malloc
+char*	getline(const char *buf);
+
 // syscall.c
 void	sys_cputs(const char *string, size_t len);
 int	sys_cgetc(void);
@@ -188,6 +194,7 @@ int chdir(const char *path);
 // parse.c
 void get_token_init(const char *str, const char *separator);
 char *get_token(void);
+void get_token_free(void);
 
 
 /* File open modes */

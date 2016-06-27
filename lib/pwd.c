@@ -81,6 +81,8 @@ char *get_abs_path(const char *path) {
 			tail = elem;
 		}
 	}
+
+	get_token_free();
 	struct List_elem *p = head->next;
 	char *ret = strcopy("/");
 	bool first = true;

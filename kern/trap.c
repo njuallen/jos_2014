@@ -294,11 +294,13 @@ trap_dispatch(struct Trapframe *tf)
 			// keyboard interrupt
 			// remember to return
 		case IRQ_OFFSET + IRQ_KBD:
+			//cprintf("keyboard interrupt\n");
 			kbd_intr();
 			return;
 			break;
 			// serial irq
 		case IRQ_OFFSET + IRQ_SERIAL:
+			//cprintf("serial interrupt\n");
 			serial_intr();
 			return;
 			break;
