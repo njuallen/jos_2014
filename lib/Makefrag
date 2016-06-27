@@ -37,7 +37,8 @@ LIB_SRCFILES :=		$(LIB_SRCFILES) \
 			lib/wait.c \
 			lib/pwd.c \
 			lib/parse.c \
-			lib/getline.c
+			lib/getline.c \
+			lib/error.c
 
 
 LIB_OBJFILES := $(patsubst lib/%.c, $(OBJDIR)/lib/%.o, $(LIB_SRCFILES))

@@ -32,19 +32,40 @@ sched_yield(void)
 	struct Env *ptr;
 	// at the very beginning no environment is running
 	if(curenv == NULL) {
-		for(ptr = &envs[0]; ptr < &envs[NENV]; ptr++)
+		for(ptr = &envs[0]; ptr < &envs[NENV]; ptr++) {
+			if(ptr->env_status != ENV_FREE && ptr->env_sigint && !ptr->env_ignore_sigint) {
+				env_destroy(ptr);
+				continue;
+			}
 			if(ptr->env_status == ENV_RUNNABLE)
 				env_run(ptr);
+		}
 	}
 	else {
-		for(ptr = curenv; ptr < &envs[NENV]; ptr++)
+		for(ptr = curenv; ptr < &envs[NENV]; ptr++) {
+			if(ptr->env_status != ENV_FREE && ptr->env_sigint && !ptr->env_ignore_sigint) {
+				env_destroy(ptr);
+				continue;
+			}
 			if(ptr->env_status == ENV_RUNNABLE)
 				env_run(ptr);
-		for(ptr = &envs[0]; ptr < curenv; ptr++)
+		}
+
+		for(ptr = &envs[0]; ptr < curenv; ptr++) {
+			if(ptr->env_status != ENV_FREE && ptr->env_sigint && !ptr->env_ignore_sigint) {
+				env_destroy(ptr);
+				continue;
+			}
 			if(ptr->env_status == ENV_RUNNABLE)
 				env_run(ptr);
-		if(curenv->env_status == ENV_RUNNING)
-			env_run(curenv);
+		}
+		if(curenv->env_status == ENV_RUNNING) {
+			ptr = curenv;
+			if(ptr->env_sigint && !ptr->env_ignore_sigint)
+				env_destroy(ptr);
+			else
+				env_run(curenv);
+		}
 	}
 
 	// sched_halt never returns

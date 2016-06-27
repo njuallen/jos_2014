@@ -25,6 +25,8 @@ enum {
 	SYS_gettick,
 	SYS_sleep,
 	SYS_read_rtc,
+	SYS_ignore_sigint,
+	SYS_accept_sigint,
 	NSYSCALLS
 };
 

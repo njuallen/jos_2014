@@ -333,6 +333,7 @@ int do_builtin(char *str) {
 void
 umain(int argc, char **argv)
 {
+	sys_ignore_sigint();
 	int r, interactive, echocmds;
 	struct Argstate args;
 
@@ -395,10 +396,12 @@ umain(int argc, char **argv)
 		if (r == 0) {
 			if(debug)
 				printf("runcmd: pwd is %s\n", pwd());
+			sys_accept_sigint();
 			runcmd(buf);
 			exit();
-		} else
+		} else {
+			//printf("r: %d\n", r);
 			wait(r);
+		}
 	}
 }
-

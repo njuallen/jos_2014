@@ -3,6 +3,7 @@
 void
 umain(int argc, char **argv)
 {
+	sys_ignore_sigint();
 	int fd, n, r;
 	char buf[512+1];
 

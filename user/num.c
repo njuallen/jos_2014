@@ -36,7 +36,7 @@ umain(int argc, char **argv)
 		for (i = 1; i < argc; i++) {
 			f = open(argv[i], O_RDONLY);
 			if (f < 0)
-				panic("can't open %s: %e", argv[i], f);
+				perror("can't open %s: %e", argv[i], f);
 			else {
 				num(f, argv[i]);
 				close(f);

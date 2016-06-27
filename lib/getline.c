@@ -28,8 +28,13 @@ getline(const char *prompt)
 	struct List_elem *p = l;
 	int i, c, echoing;
 
-	if (prompt != NULL)
+	// the positione of the cursor
+	int cursor = 0;
+
+	if (prompt != NULL) {
 		fprintf(1, "%s", prompt);
+		cursor += strlen(prompt);
+	}
 
 	i = 0;
 	echoing = iscons(0);
@@ -47,16 +52,26 @@ getline(const char *prompt)
 					// overwrite contents in current buffer
 					memcpy(buf, p->buf, BUFLEN * sizeof(char));
 
+
 					// clear echoing characters on this line
-					while((i--) > 0) {
+					while(cursor > 0) {
 						cputchar('\b');
 						// use a white space to erase out previous output
 						cputchar(' ');
 						cputchar('\b');
+						cursor--;
+					}
+
+					// reprint prompt
+					if (prompt != NULL) {
+						fprintf(1, "%s", prompt);
+						cursor += strlen(prompt);
 					}
 
 					// output the contents in the buffer
 					fprintf(1, "%s", buf);
+					cursor += strlen(buf);
+
 					// update i
 					i = strlen(buf);
 					// update p
@@ -69,12 +84,16 @@ getline(const char *prompt)
 				}
 				// well, if you hit left and right
 				// we simulate the default action
-				if(echoing && c == 67)
+				if(echoing && c == 67) {
 					fprintf(1, "%s", "[C");
-				if(echoing && c == 68)
+					cursor += strlen("[C");
+				}
+				if(echoing && c == 68) {
 					fprintf(1, "%s", "[D");
+					cursor += strlen("[D");
+				}
+				continue;
 			}
-			continue;
 		}
 		if (c < 0) {
 			if (c != -E_EOF)
@@ -82,12 +101,16 @@ getline(const char *prompt)
 			return NULL;
 		} else if ((c == '\b' || c == '\x7f') && i > 0) {
 			// back space or delete
-			if (echoing)
+			if (echoing) {
 				cputchar('\b');
+				cursor--;
+			}
 			i--;
 		} else if (c >= ' ' && i < BUFLEN-1) {
-			if (echoing)
+			if (echoing) {
 				cputchar(c);
+				cursor++;
+			}
 			buf[i++] = c;
 		} else if (c == '\n' || c == '\r') {
 			if (echoing)

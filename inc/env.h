@@ -70,6 +70,10 @@ struct Env {
 
 	// MOS sleeping
 	uint32_t env_time_to_sleep;
+
+	// shell lab, sigint
+	bool env_ignore_sigint;
+	bool env_sigint;
 };
 
 #endif // !JOS_INC_ENV_H

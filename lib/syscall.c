@@ -159,3 +159,15 @@ void sys_read_rtc(struct Rtc *rtc)
 {
 	syscall(SYS_read_rtc, 1, (uint32_t)rtc, 0, 0, 0, 0);
 }
+
+void
+sys_ignore_sigint(void)
+{
+	syscall(SYS_ignore_sigint, 0, 0, 0, 0, 0, 0);
+}
+
+void
+sys_accept_sigint(void)
+{
+	syscall(SYS_accept_sigint, 0, 0, 0, 0, 0, 0);
+}

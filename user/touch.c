@@ -32,7 +32,7 @@ touch(const char *path)
 		printf("path: %s\ndir: %s\nname: %s\n", path, dir, name);
 
 	if ((fd = open(dir, O_RDWR)) < 0)
-		panic("open %s: %e", dir, fd);
+		perror("open %s: %e", dir, fd);
 	// the offset of the current entry
 	off_t offset = 0;
 	bool found = false;
@@ -45,20 +45,20 @@ touch(const char *path)
 			// write back the changes
 			seek(fd, offset);
 			if((n = write(fd, &f, sizeof f) != sizeof f))
-				panic("touch: write directory %s's entry failed\n", dir);
+				perror("touch: write directory %s's entry failed\n", dir);
 			found = true;
 			break;
 		}
 		offset += sizeof f;
 	}
 	if(!found)
-		panic("can not found '%s' in directory '%s'\n", name, dir);
+		perror("can not found '%s' in directory '%s'\n", name, dir);
 	return;
 
 file_not_exist:
 	// create new file
 	if(!flag['c'] && (fd = open(path, O_RDWR | O_CREAT)) < 0)
-		panic("can not create file:%s\n", path);
+		perror("can not create file:%s\n", path);
 }
 
 // -c do not create any file

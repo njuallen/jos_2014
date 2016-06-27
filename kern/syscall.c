@@ -582,6 +582,20 @@ sys_ipc_recv(void *dstva)
 	return 0;
 }
 
+static int
+sys_ignore_sigint(void)
+{
+	curenv->env_ignore_sigint = true;
+	return 0;
+}
+
+static int
+sys_accept_sigint(void)
+{
+	curenv->env_ignore_sigint = false;
+	return 0;
+}
+
 // Dispatches to the correct kernel function, passing the arguments.
 int32_t
 syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, uint32_t a5)
@@ -660,11 +674,17 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 			break;
 		case SYS_read_rtc:
 			return sys_read_rtc((void *)a1);
+		case SYS_ignore_sigint:
+			return sys_ignore_sigint();
+			break;
+		case SYS_accept_sigint:
+			return sys_accept_sigint();
+			break;
 		default:
 			return -E_INVAL;
-		// lab 4 default, I do not know the reason why it changed to -E_INVAL
-		//default:
-		//	return -E_NO_SYS;
+			// lab 4 default, I do not know the reason why it changed to -E_INVAL
+			//default:
+			//	return -E_NO_SYS;
 	}
 }
 

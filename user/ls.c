@@ -38,7 +38,7 @@ struct List *lsdir(const char *path)
 	struct File f;
 
 	if ((fd = open(path, O_RDONLY)) < 0)
-		panic("open %s: %e", path, fd);
+		perror("open %s: %e", path, fd);
 	
 	// create a dummy element
 	struct List *head = (struct List *)malloc(1 * sizeof(struct List));
@@ -83,7 +83,7 @@ struct List *ls(const char *path)
 	struct Stat st;
 
 	if ((r = stat(path, &st)) < 0)
-		panic("stat %s: %e", path, r);
+		perror("stat %s: %e", path, r);
 
 	struct List *ret = (struct List *)malloc(1 * sizeof(struct List));
 	strncpy(ret->name, path, MAXNAMELEN);

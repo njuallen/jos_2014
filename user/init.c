@@ -22,6 +22,7 @@ sum(const char *s, int n)
 void
 umain(int argc, char **argv)
 {
+	sys_ignore_sigint();
 	int i, r, x, want;
 	char args[256];
 

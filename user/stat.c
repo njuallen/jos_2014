@@ -31,7 +31,7 @@ void cmd_stat(const char *path)
 	struct Stat st;
 
 	if ((r = stat(path, &st)) < 0)
-		panic("stat %s: %e", path, r);
+		perror("stat %s: %e", path, r);
 
 	// output path
 	printf("%s:\n", path);

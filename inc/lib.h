@@ -71,6 +71,8 @@ int sys_sem_close(int sem_id);
 int sys_sem_post(int sem_id);
 int sys_sem_wait(int sem_id);
 void sys_read_rtc(struct Rtc *rtc);
+void sys_ignore_sigint();
+void sys_accept_sigint();
 
 // This must be inlined.  Exercise for reader: why?
 static __inline envid_t __attribute__((always_inline))
@@ -195,6 +197,9 @@ int chdir(const char *path);
 void get_token_init(const char *str, const char *separator);
 char *get_token(void);
 void get_token_free(void);
+
+// error.c
+void perror(const char *fmt, ...);
 
 
 /* File open modes */

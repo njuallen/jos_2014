@@ -5,9 +5,11 @@
 #include <inc/kbdreg.h>
 #include <inc/string.h>
 #include <inc/assert.h>
+#include <inc/env.h>
 
 #include <kern/console.h>
 #include <kern/picirq.h>
+#include <kern/env.h>
 
 static void cons_intr(int (*proc)(void));
 static void cons_putc(int c);
@@ -53,7 +55,16 @@ serial_proc_data(void)
 {
 	if (!(inb(COM1+COM_LSR) & COM_LSR_DATA))
 		return -1;
-	return inb(COM1+COM_RX);
+	int data = inb(COM1+COM_RX);
+	// ctrl-c from serial port
+	if(data == 3) {
+		// raise sigint
+		struct Env *ptr;
+		for(ptr = &envs[0]; ptr < &envs[NENV]; ptr++)
+			if(ptr->env_status != ENV_FREE)
+				ptr->env_sigint = true;
+	}
+	return data;
 }
 
 void
