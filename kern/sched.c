@@ -33,8 +33,11 @@ sched_yield(void)
 	// at the very beginning no environment is running
 	if(curenv == NULL) {
 		for(ptr = &envs[0]; ptr < &envs[NENV]; ptr++) {
-			if(ptr->env_status != ENV_FREE && ptr->env_sigint && !ptr->env_ignore_sigint) {
-				env_destroy(ptr);
+			if(ptr->env_status != ENV_FREE && ptr->env_sigint) {
+				if(ptr->env_ignore_sigint)
+					ptr->env_sigint = false;
+				else
+					env_destroy(ptr);
 				continue;
 			}
 			if(ptr->env_status == ENV_RUNNABLE)
@@ -43,8 +46,11 @@ sched_yield(void)
 	}
 	else {
 		for(ptr = curenv; ptr < &envs[NENV]; ptr++) {
-			if(ptr->env_status != ENV_FREE && ptr->env_sigint && !ptr->env_ignore_sigint) {
-				env_destroy(ptr);
+			if(ptr->env_status != ENV_FREE && ptr->env_sigint) {
+				if(ptr->env_ignore_sigint)
+					ptr->env_sigint = false;
+				else
+					env_destroy(ptr);
 				continue;
 			}
 			if(ptr->env_status == ENV_RUNNABLE)
@@ -52,8 +58,11 @@ sched_yield(void)
 		}
 
 		for(ptr = &envs[0]; ptr < curenv; ptr++) {
-			if(ptr->env_status != ENV_FREE && ptr->env_sigint && !ptr->env_ignore_sigint) {
-				env_destroy(ptr);
+			if(ptr->env_status != ENV_FREE && ptr->env_sigint) {
+				if(ptr->env_ignore_sigint)
+					ptr->env_sigint = false;
+				else
+					env_destroy(ptr);
 				continue;
 			}
 			if(ptr->env_status == ENV_RUNNABLE)
@@ -61,8 +70,14 @@ sched_yield(void)
 		}
 		if(curenv->env_status == ENV_RUNNING) {
 			ptr = curenv;
-			if(ptr->env_sigint && !ptr->env_ignore_sigint)
-				env_destroy(ptr);
+			if(ptr->env_sigint) {
+				if(ptr->env_ignore_sigint) {
+					ptr->env_sigint = false;
+					env_run(curenv);
+				}
+				else
+					env_destroy(ptr);
+			}
 			else
 				env_run(curenv);
 		}

@@ -39,6 +39,7 @@ struct List *lsdir(const char *path)
 
 	if ((fd = open(path, O_RDONLY)) < 0)
 		perror("open %s: %e", path, fd);
+
 	
 	// create a dummy element
 	struct List *head = (struct List *)malloc(1 * sizeof(struct List));
