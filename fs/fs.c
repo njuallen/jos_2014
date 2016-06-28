@@ -438,7 +438,6 @@ file_write(struct File *f, const void *buf, size_t count, off_t offset)
 	// we put it at the end of the function
 	// so that the modification time is updated only if the write succeeds
 	// if you write 0 bytes, the modification time is also updated
-	// touch uses this feature to update modification time
 	sys_read_rtc(&f->f_modify);
 
 	return count;
